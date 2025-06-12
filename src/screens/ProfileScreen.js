@@ -1,390 +1,489 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
+  TouchableOpacity,
   Alert,
-  Image,
-  Modal,
+  Switch,
   TextInput,
+  Modal,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const ProfileScreen = ({ navigation }) => {
-  const { user, logout } = useAuth();
-  const { isDarkMode, colors, toggleTheme } = useTheme();
-  const [showEditProfile, setShowEditProfile] = React.useState(false);
-  const [editName, setEditName] = React.useState(user?.name || '');
-  const [editPhone, setEditPhone] = React.useState(user?.phone || '');
-  const [editAddress, setEditAddress] = React.useState(user?.address || '');
-  const [showOrdersModal, setShowOrdersModal] = React.useState(false);
-  const [showAddressesModal, setShowAddressesModal] = React.useState(false);
-  const [showPaymentModal, setShowPaymentModal] = React.useState(false);
+  const { theme, mode, toggleTheme } = useTheme();
+  const [user, setUser] = useState({
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    avatar: 'JD',
+    memberSince: '2024',
+    fullName: 'Jean Dupont',
+    phone: '+33 6 12 34 56 78',
+    address: '123 Rue de la Paix, 75001 Paris',
+  });
+
+  const [settings, setSettings] = useState({
+    darkMode: mode === 'dark',
+  });
+
+  const [editModal, setEditModal] = useState({
+    visible: false,
+    field: '',
+    value: '',
+    title: '',
+  });
 
   const handleLogout = () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Déconnexion', 
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to logout');
-            }
+          onPress: () => {
+            // Handle logout logic here
+            navigation.navigate('Login');
           }
         }
       ]
     );
   };
 
-  const handleSaveProfile = () => {
-    // TODO: Save logic (API call or context update)
-    setShowEditProfile(false);
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Supprimer le compte',
+      'Cette action est irréversible. Toutes vos données seront supprimées définitivement.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Supprimer', 
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Compte supprimé', 'Votre compte a été supprimé avec succès.');
+          }
+        }
+      ]
+    );
   };
+
+  const toggleSetting = (key) => {
+    if (key === 'darkMode') {
+      toggleTheme();
+    }
+    setSettings(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const editPersonalInfo = (field) => {
+    const titles = {
+      fullName: 'Nom complet',
+      phone: 'Numéro de téléphone',
+      address: 'Adresse'
+    };
+    
+    setEditModal({
+      visible: true,
+      field: field,
+      value: user[field],
+      title: titles[field]
+    });
+  };
+
+  const savePersonalInfo = () => {
+    setUser(prev => ({
+      ...prev,
+      [editModal.field]: editModal.value
+    }));
+    setEditModal({ visible: false, field: '', value: '', title: '' });
+    Alert.alert('Succès', 'Vos informations ont été mises à jour.');
+  };
+
+  const menuItems = [
+    {
+      section: 'Informations personnelles',
+      items: [
+        { icon: 'person-outline', title: 'Nom complet', subtitle: user.fullName, onPress: () => editPersonalInfo('fullName') },
+        { icon: 'call-outline', title: 'Numéro de téléphone', subtitle: user.phone, onPress: () => editPersonalInfo('phone') },
+        { icon: 'location-outline', title: 'Adresse', subtitle: user.address, onPress: () => editPersonalInfo('address') },
+      ]
+    },
+    {
+      section: 'Compte',
+      items: [
+        { icon: 'card-outline', title: 'Méthodes de paiement', onPress: () => navigation.navigate('PaymentMethods') },
+        { icon: 'receipt-outline', title: 'Historique des commandes', onPress: () => navigation.navigate('Orders') },
+        { icon: 'business-outline', title: 'Mes entreprises', onPress: () => navigation.navigate('Companies') },
+      ]
+    },
+    {
+      section: 'Préférences',
+      items: [
+        { icon: 'moon-outline', title: 'Mode sombre', toggle: 'darkMode' },
+        { icon: 'shield-checkmark-outline', title: 'Confidentialité & RGPD', onPress: () => navigation.navigate('RGPDSettings') },
+      ]
+    },
+    {
+      section: 'Support',
+      items: [
+        { icon: 'chatbubble-outline', title: 'Contacter le support', onPress: () => navigation.navigate('Contact') },
+        { icon: 'information-circle-outline', title: 'À propos', onPress: () => navigation.navigate('About') },
+        { icon: 'document-outline', title: 'Mentions légales', onPress: () => navigation.navigate('LegalMentions') },
+        { icon: 'document-text-outline', title: 'Conditions d\'utilisation', onPress: () => navigation.navigate('Terms') },
+        { icon: 'shield-checkmark-outline', title: 'Politique de confidentialité', onPress: () => navigation.navigate('PrivacyPolicy') },
+      ]
+    }
+  ];
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDarkMode ? '#10111a' : '#f8f8ff',
+      backgroundColor: theme.base100,
     },
-    scrollView: {
-      flex: 1,
+    header: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      paddingTop: 60,
+      backgroundColor: theme.base100,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.neutral,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 24,
+    },
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: theme.baseContent,
+    },
+    settingsButton: {
+      backgroundColor: theme.base200,
+      borderRadius: 12,
+      padding: 8,
     },
     profileCard: {
-      alignItems: 'center',
-      backgroundColor: '#fff',
-      borderRadius: 24,
-      margin: 24,
-      marginBottom: 12,
+      backgroundColor: theme.base200,
+      borderRadius: theme.borderRadius.xl,
       padding: 24,
-      elevation: 4,
-      shadowColor: '#a78bfa',
-      shadowOpacity: 0.10,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
+      alignItems: 'center',
     },
-    profileImage: {
+    avatar: {
       width: 80,
       height: 80,
       borderRadius: 40,
-      marginBottom: 12,
+      backgroundColor: theme.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    avatarText: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: theme.primaryContent,
     },
     userName: {
-      fontSize: 22,
+      fontSize: 24,
       fontWeight: 'bold',
-      color: '#23234b',
+      color: theme.baseContent,
       marginBottom: 4,
     },
     userEmail: {
-      fontSize: 15,
-      color: '#6b7280',
-      marginBottom: 10,
-    },
-    editProfileButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#a78bfa',
-      borderRadius: 16,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      marginTop: 8,
-    },
-    editProfileText: {
-      color: '#fff',
-      fontWeight: 'bold',
-      marginLeft: 6,
-      fontSize: 14,
-    },
-    settingsSection: {
-      margin: 24,
-      marginTop: 0,
-      backgroundColor: '#fff',
-      borderRadius: 24,
-      paddingVertical: 8,
-      elevation: 2,
-      shadowColor: '#a78bfa',
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 2 },
-    },
-    settingsItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 16,
-      paddingHorizontal: 18,
-      borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
-    },
-    settingsIcon: {
-      marginRight: 12,
-    },
-    settingsText: {
-      flex: 1,
       fontSize: 16,
-      color: '#23234b',
-      fontWeight: '500',
+      color: theme.neutralContent,
+      marginBottom: 8,
     },
-    themeToggleBtn: {
-      backgroundColor: '#a78bfa',
-      borderRadius: 12,
-      padding: 6,
+
+    memberSince: {
+      fontSize: 14,
+      color: theme.neutralContent,
+    },
+    scrollContainer: {
+      paddingHorizontal: 24,
+      paddingVertical: 24,
+    },
+    section: {
+      marginBottom: 32,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: theme.baseContent,
+      marginBottom: 16,
+    },
+    menuItem: {
+      backgroundColor: theme.base200,
+      borderRadius: theme.borderRadius.xl,
+      padding: 16,
+      marginBottom: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    menuItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    menuItemIcon: {
+      marginRight: 16,
+    },
+    menuItemTitle: {
+      fontSize: 16,
+      color: theme.baseContent,
+      flex: 1,
+    },
+    menuItemSubtitle: {
+      fontSize: 14,
+      color: theme.neutralContent,
+      marginTop: 2,
+    },
+    menuItemArrow: {
       marginLeft: 8,
     },
-    logoutButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#FF3B30',
-      borderRadius: 16,
-      paddingVertical: 14,
-      paddingHorizontal: 24,
-      margin: 24,
-      marginTop: 0,
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
+      alignItems: 'center',
     },
-    logoutText: {
-      color: '#fff',
+    modalContent: {
+      backgroundColor: theme.base100,
+      borderRadius: theme.borderRadius.xl,
+      padding: 24,
+      width: '90%',
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 20,
       fontWeight: 'bold',
-      fontSize: 16,
+      color: theme.baseContent,
+      marginBottom: 16,
+      textAlign: 'center',
     },
-    legalLinksCardSection: {
-      marginHorizontal: 24,
-      marginTop: 32,
+    modalInput: {
+      backgroundColor: theme.base200,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: theme.baseContent,
       marginBottom: 24,
+      borderWidth: 1,
+      borderColor: theme.neutral,
     },
-    legalCard: {
+    modalButtons: {
       flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    modalButton: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 12,
       alignItems: 'center',
-      backgroundColor: '#fff',
-      borderRadius: 18,
-      paddingVertical: 18,
-      paddingHorizontal: 20,
-      marginBottom: 14,
-      elevation: 2,
-      shadowColor: '#a78bfa',
-      shadowOpacity: 0.10,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
+      marginHorizontal: 8,
     },
-    legalCardIcon: {
-      marginRight: 14,
+    modalButtonCancel: {
+      backgroundColor: theme.base200,
+      borderWidth: 1,
+      borderColor: theme.neutral,
     },
-    legalCardText: {
+    modalButtonSave: {
+      backgroundColor: theme.primary,
+    },
+    modalButtonText: {
       fontSize: 16,
-      color: '#23234b',
-      fontWeight: 'bold',
+      fontWeight: '600',
     },
-    profileActionsSection: {
-      marginHorizontal: 24,
-      marginTop: 12,
-      marginBottom: 12,
+    modalButtonTextCancel: {
+      color: theme.baseContent,
     },
-    profileActionCard: {
-      flexDirection: 'row',
+    modalButtonTextSave: {
+      color: theme.primaryContent,
+    },
+    dangerSection: {
+      marginTop: 32,
+      paddingTop: 24,
+      borderTopWidth: 1,
+      borderTopColor: theme.neutral,
+    },
+    dangerButton: {
+      backgroundColor: theme.error + '20',
+      borderWidth: 1,
+      borderColor: theme.error + '30',
+      borderRadius: theme.borderRadius.xl,
+      padding: 16,
       alignItems: 'center',
-      backgroundColor: '#fff',
-      borderRadius: 18,
-      paddingVertical: 18,
-      paddingHorizontal: 20,
-      marginBottom: 14,
-      elevation: 2,
-      shadowColor: '#a78bfa',
-      shadowOpacity: 0.10,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
+      marginBottom: 16,
     },
-    profileActionIcon: {
-      marginRight: 14,
-    },
-    profileActionText: {
+    dangerButtonText: {
       fontSize: 16,
-      color: '#23234b',
-      fontWeight: 'bold',
+      fontWeight: '600',
+      color: theme.error,
+    },
+    logoutButton: {
+      backgroundColor: theme.base200,
+      borderRadius: theme.borderRadius.xl,
+      padding: 16,
+      alignItems: 'center',
+    },
+    logoutButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.baseContent,
     },
   });
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 48 }}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <Text style={styles.headerTitle}>Profil</Text>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <Ionicons name="settings-outline" size={24} color={theme.baseContent} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Profile Card */}
         <View style={styles.profileCard}>
-          <Image
-            source={{ uri: 'https://via.placeholder.com/100' }}
-            style={styles.profileImage}
-          />
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
-          <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
-          <TouchableOpacity style={styles.editProfileButton}>
-            <Ionicons name="pencil" size={18} color="#fff" />
-            <Text style={styles.editProfileText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.profileActionsSection}>
-          <TouchableOpacity style={styles.profileActionCard} onPress={() => setShowEditProfile(true)}>
-            <Ionicons name="create-outline" size={22} color="#7c3aed" style={styles.profileActionIcon} />
-            <Text style={styles.profileActionText}>Modifier mon profil</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.profileActionCard} onPress={() => navigation.navigate('Companies')}>
-            <Ionicons name="business-outline" size={22} color="#7c3aed" style={styles.profileActionIcon} />
-            <Text style={styles.profileActionText}>Mes entreprises</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.profileActionCard} onPress={() => setShowOrdersModal(true)}>
-            <Ionicons name="receipt-outline" size={22} color="#7c3aed" style={styles.profileActionIcon} />
-            <Text style={styles.profileActionText}>Mes commandes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.profileActionCard} onPress={() => setShowAddressesModal(true)}>
-            <Ionicons name="location-outline" size={22} color="#7c3aed" style={styles.profileActionIcon} />
-            <Text style={styles.profileActionText}>Adresses de livraison</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.profileActionCard} onPress={() => setShowPaymentModal(true)}>
-            <Ionicons name="card-outline" size={22} color="#7c3aed" style={styles.profileActionIcon} />
-            <Text style={styles.profileActionText}>Moyens de paiement</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.settingsSection}>
-          <TouchableOpacity style={styles.settingsItem}>
-            <Ionicons name="moon" size={22} color="#a78bfa" style={styles.settingsIcon} />
-            <Text style={styles.settingsText}>Mode {isDarkMode ? 'clair' : 'sombre'}</Text>
-            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggleBtn}>
-              <Ionicons name={isDarkMode ? 'sunny' : 'moon'} size={20} color="#fff" />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.logoutText}>Se déconnecter</Text>
-        </TouchableOpacity>
-
-        {/* Legal & Info Links Section */}
-        <View style={styles.legalLinksCardSection}>
-          <TouchableOpacity style={styles.legalCard} onPress={() => navigation.navigate('About')}>
-            <Ionicons name="information-circle-outline" size={22} color="#7c3aed" style={styles.legalCardIcon} />
-            <Text style={styles.legalCardText}>À propos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.legalCard} onPress={() => navigation.navigate('Contact')}>
-            <Ionicons name="mail-outline" size={22} color="#7c3aed" style={styles.legalCardIcon} />
-            <Text style={styles.legalCardText}>Contact</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.legalCard} onPress={() => navigation.navigate('PrivacyPolicy')}>
-            <Ionicons name="lock-closed-outline" size={22} color="#7c3aed" style={styles.legalCardIcon} />
-            <Text style={styles.legalCardText}>Politique de confidentialité</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.legalCard} onPress={() => navigation.navigate('Terms')}>
-            <Ionicons name="document-text-outline" size={22} color="#7c3aed" style={styles.legalCardIcon} />
-            <Text style={styles.legalCardText}>Conditions d'utilisation</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.legalCard} onPress={() => navigation.navigate('Legal')}>
-            <Ionicons name="shield-checkmark-outline" size={22} color="#7c3aed" style={styles.legalCardIcon} />
-            <Text style={styles.legalCardText}>Mentions légales</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Edit Profile Modal */}
-        <Modal
-          visible={showEditProfile}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setShowEditProfile(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: 'rgba(36, 33, 58, 0.25)', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 24, padding: 28, width: '90%', shadowColor: '#a78bfa', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#23234b', marginBottom: 18, textAlign: 'center' }}>Modifier mon profil</Text>
-              <TextInput
-                style={{ backgroundColor: '#f8f8ff', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' }}
-                placeholder="Nom complet"
-                value={editName}
-                onChangeText={setEditName}
-              />
-              <TextInput
-                style={{ backgroundColor: '#f8f8ff', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' }}
-                placeholder="Téléphone"
-                value={editPhone}
-                onChangeText={setEditPhone}
-                keyboardType="phone-pad"
-              />
-              <TextInput
-                style={{ backgroundColor: '#f8f8ff', borderRadius: 12, padding: 12, marginBottom: 18, borderWidth: 1, borderColor: '#e5e7eb', height: 80, textAlignVertical: 'top' }}
-                placeholder="Adresse"
-                value={editAddress}
-                onChangeText={setEditAddress}
-                multiline
-              />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <TouchableOpacity onPress={() => setShowEditProfile(false)} style={{ padding: 12, borderRadius: 12, backgroundColor: '#ede9fe', flex: 1, marginRight: 8, alignItems: 'center' }}>
-                  <Text style={{ color: '#7c3aed', fontWeight: 'bold' }}>Annuler</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleSaveProfile} style={{ padding: 12, borderRadius: 12, backgroundColor: '#7c3aed', flex: 1, marginLeft: 8, alignItems: 'center' }}>
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Enregistrer</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{user.avatar}</Text>
           </View>
-        </Modal>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userEmail}>{user.email}</Text>
+          <Text style={styles.memberSince}>
+            Membre depuis {user.memberSince}
+          </Text>
+        </View>
+      </View>
 
-        {/* Orders Modal */}
-        <Modal
-          visible={showOrdersModal}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setShowOrdersModal(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: 'rgba(36, 33, 58, 0.25)', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 24, padding: 28, width: '90%', maxHeight: '80%', shadowColor: '#a78bfa', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#23234b', marginBottom: 18, textAlign: 'center' }}>Mes commandes</Text>
-              <Text style={{ color: '#6b7280', marginBottom: 18, textAlign: 'center' }}>[Liste ou gestion des commandes ici]</Text>
-              <TouchableOpacity onPress={() => setShowOrdersModal(false)} style={{ padding: 12, borderRadius: 12, backgroundColor: '#ede9fe', alignItems: 'center' }}>
-                <Text style={{ color: '#7c3aed', fontWeight: 'bold' }}>Fermer</Text>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {menuItems.map((section, sectionIndex) => (
+          <View key={sectionIndex} style={styles.section}>
+            <Text style={styles.sectionTitle}>{section.section}</Text>
+            {section.items.map((item, itemIndex) => (
+              <TouchableOpacity
+                key={itemIndex}
+                style={styles.menuItem}
+                onPress={item.onPress}
+                disabled={!!item.toggle}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons 
+                    name={item.icon} 
+                    size={24} 
+                    color={theme.baseContent} 
+                    style={styles.menuItemIcon}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuItemTitle}>{item.title}</Text>
+                    {item.subtitle && (
+                      <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
+                    )}
+                  </View>
+                </View>
+                
+                {item.toggle ? (
+                  <Switch
+                    value={settings[item.toggle]}
+                    onValueChange={() => toggleSetting(item.toggle)}
+                    trackColor={{ false: theme.neutral, true: theme.primary + '40' }}
+                    thumbColor={settings[item.toggle] ? theme.primary : theme.base100}
+                  />
+                ) : (
+                  <Ionicons 
+                    name="chevron-forward" 
+                    size={20} 
+                    color={theme.neutralContent} 
+                    style={styles.menuItemArrow}
+                  />
+                )}
               </TouchableOpacity>
-            </View>
+            ))}
           </View>
-        </Modal>
+        ))}
 
-        {/* Addresses Modal */}
-        <Modal
-          visible={showAddressesModal}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setShowAddressesModal(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: 'rgba(36, 33, 58, 0.25)', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 24, padding: 28, width: '90%', maxHeight: '80%', shadowColor: '#a78bfa', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#23234b', marginBottom: 18, textAlign: 'center' }}>Adresses de livraison</Text>
-              <Text style={{ color: '#6b7280', marginBottom: 18, textAlign: 'center' }}>[Gestion des adresses ici]</Text>
-              <TouchableOpacity onPress={() => setShowAddressesModal(false)} style={{ padding: 12, borderRadius: 12, backgroundColor: '#ede9fe', alignItems: 'center' }}>
-                <Text style={{ color: '#7c3aed', fontWeight: 'bold' }}>Fermer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+        {/* Danger Zone */}
+        <View style={styles.dangerSection}>
+          <Text style={styles.sectionTitle}>Zone de danger</Text>
+          
+          <TouchableOpacity 
+            style={styles.dangerButton}
+            onPress={handleDeleteAccount}
+          >
+            <Text style={styles.dangerButtonText}>
+              Supprimer mon compte
+            </Text>
+          </TouchableOpacity>
 
-        {/* Payment Methods Modal */}
-        <Modal
-          visible={showPaymentModal}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setShowPaymentModal(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: 'rgba(36, 33, 58, 0.25)', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 24, padding: 28, width: '90%', maxHeight: '80%', shadowColor: '#a78bfa', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}>
-              <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#23234b', marginBottom: 18, textAlign: 'center' }}>Moyens de paiement</Text>
-              <Text style={{ color: '#6b7280', marginBottom: 18, textAlign: 'center' }}>[Gestion des moyens de paiement ici]</Text>
-              <TouchableOpacity onPress={() => setShowPaymentModal(false)} style={{ padding: 12, borderRadius: 12, backgroundColor: '#ede9fe', alignItems: 'center' }}>
-                <Text style={{ color: '#7c3aed', fontWeight: 'bold' }}>Fermer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Text style={styles.logoutButtonText}>
+              Se déconnecter
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      {/* Modal d'édition */}
+      <Modal
+        visible={editModal.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setEditModal({ visible: false, field: '', value: '', title: '' })}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Modifier {editModal.title}</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              value={editModal.value}
+              onChangeText={(text) => setEditModal(prev => ({ ...prev, value: text }))}
+              placeholder={`Entrez votre ${editModal.title.toLowerCase()}`}
+              placeholderTextColor={theme.neutralContent}
+              multiline={editModal.field === 'address'}
+              numberOfLines={editModal.field === 'address' ? 3 : 1}
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => setEditModal({ visible: false, field: '', value: '', title: '' })}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>
+                  Annuler
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSave]}
+                onPress={savePersonalInfo}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextSave]}>
+                  Enregistrer
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

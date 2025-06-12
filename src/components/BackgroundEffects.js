@@ -1,32 +1,49 @@
 import React from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
+const Halo = ({ size, colors, style, top, left, right, bottom }) => (
+  <View
+    style={[
+      {
+        position: 'absolute',
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        overflow: 'hidden',
+        top,
+        left,
+        right,
+        bottom,
+        opacity: 0.7,
+      },
+      style,
+    ]}
+  >
+    <LinearGradient
+      colors={colors}
+      start={{ x: 0.7, y: 0.3 }}
+      end={{ x: 1, y: 1 }}
+      style={{ flex: 1, borderRadius: size / 2 }}
+    />
+  </View>
+);
 
 const BackgroundEffects = () => {
   return (
-    <View style={styles.container}>
-      {/* Background Gradient */}
+    <View style={styles.container} pointerEvents="none">
+      {/* Dégradé général */}
       <LinearGradient
-        colors={['#F3F4F6', '#FFFFFF', '#C5A0FF']}
+        colors={["#f3f4f6", "#fff", "#e9d8fd"]}
         style={styles.gradientBackground}
       />
-
-      {/* Floating Light Effects */}
-      <Animated.View style={[styles.floatEffect, styles.floatEffectOne]} />
-      <Animated.View style={[styles.floatEffect, styles.floatEffectTwo]} />
-      <Animated.View style={[styles.floatEffect, styles.floatEffectThree]} />
-
-      {/* Additional Depth Effects */}
-      <Animated.View style={[styles.floatEffect, styles.floatEffectFour]} />
-      <Animated.View style={[styles.floatEffect, styles.floatEffectFive]} />
-
-      {/* Light Points */}
-      <View style={[styles.lightPoint, styles.lightPointOne]} />
-      <View style={[styles.lightPoint, styles.lightPointTwo]} />
-      <View style={[styles.lightPoint, styles.lightPointThree]} />
-      <View style={[styles.lightPoint, styles.lightPointFour]} />
-      <View style={[styles.lightPoint, styles.lightPointFive]} />
-      <View style={[styles.lightPoint, styles.lightPointSix]} />
+      {/* Halo lumineux principal, très doux, en haut à droite */}
+      <Halo
+        size={600}
+        colors={["#e9d8fd", "rgba(233,216,253,0.10)", "transparent"]}
+        top={-180}
+        right={-120}
+      />
     </View>
   );
 };
@@ -40,6 +57,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: -1,
   },
   gradientBackground: {
     position: 'absolute',
@@ -47,84 +65,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-  },
-  floatEffect: {
-    position: 'absolute',
-    borderRadius: 9999,
-    backgroundColor: 'rgba(128, 0, 255, 0.2)',
-    blurRadius: 50,
-  },
-  floatEffectOne: {
-    width: 200,
-    height: 200,
-    top: -100,
-    right: -100,
-  },
-  floatEffectTwo: {
-    width: 160,
-    height: 160,
-    bottom: -100,
-    left: -80,
-    animationDelay: '2s',
-  },
-  floatEffectThree: {
-    width: 180,
-    height: 180,
-    top: '50%',
-    left: '50%',
-    marginLeft: -90,
-    marginTop: -90,
-    animationDelay: '4s',
-  },
-  floatEffectFour: {
-    width: 160,
-    height: 160,
-    top: '25%',
-    right: '25%',
-    animationDelay: '6s',
-  },
-  floatEffectFive: {
-    width: 140,
-    height: 140,
-    bottom: '25%',
-    left: '25%',
-    animationDelay: '8s',
-  },
-  lightPoint: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'purple',
-  },
-  lightPointOne: {
-    top: '25%',
-    left: '25%',
-  },
-  lightPointTwo: {
-    top: '30%',
-    right: '30%',
-    animationDelay: '1s',
-  },
-  lightPointThree: {
-    bottom: '30%',
-    left: '30%',
-    animationDelay: '3s',
-  },
-  lightPointFour: {
-    bottom: '25%',
-    right: '25%',
-    animationDelay: '2s',
-  },
-  lightPointFive: {
-    bottom: '15%',
-    left: '20%',
-    animationDelay: '4s',
-  },
-  lightPointSix: {
-    bottom: '20%',
-    right: '20%',
-    animationDelay: '5s',
   },
 });
 

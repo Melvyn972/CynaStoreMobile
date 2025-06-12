@@ -27,7 +27,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkAuthStatus();
   }, []);
-
+  console.log('isAuthenticated', isAuthenticated);  
+  console.log('user', user);
+  console.log('loading', loading);
   const checkAuthStatus = async () => {
     try {
       const token = await getStoredToken();

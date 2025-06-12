@@ -1,58 +1,322 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Button } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import BackgroundEffects from '../components/BackgroundEffects';
 
 const ContactScreen = ({ navigation }) => {
+  const { theme, mode } = useTheme();
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    message: '',
+  });
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmit = () => {
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+
+    Alert.alert(
+      'Message envoyé !',
+      'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            setFormData({
+              firstName: '',
+              lastName: '',
+              email: '',
+              message: '',
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.base100,
+    },
+    keyboardContainer: {
+      flex: 1,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      paddingVertical: 24,
+      paddingTop: 80,
+    },
+    mainCard: {
+      backgroundColor: theme.base200,
+      borderRadius: theme.borderRadius['2xl'],
+      overflow: 'hidden',
+      marginBottom: 32,
+    },
+    leftSection: {
+      padding: 32,
+      justifyContent: 'center',
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: theme.baseContent,
+      marginBottom: 16,
+      lineHeight: 40,
+    },
+    subtitle: {
+      fontSize: 20,
+      color: theme.neutralContent,
+      marginBottom: 24,
+      lineHeight: 28,
+    },
+    contactInfo: {
+      marginBottom: 16,
+    },
+    contactLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.baseContent,
+      marginBottom: 8,
+    },
+    contactText: {
+      fontSize: 16,
+      color: theme.neutralContent,
+      marginBottom: 4,
+      lineHeight: 24,
+    },
+    contactLink: {
+      fontSize: 16,
+      color: theme.primary,
+      fontWeight: '500',
+    },
+    rightSection: {
+      backgroundColor: theme.base100 + 'CC',
+      padding: 32,
+    },
+    formTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.baseContent,
+      marginBottom: 24,
+      textAlign: 'center',
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.baseContent,
+      marginBottom: 8,
+    },
+    requiredStar: {
+      color: theme.error,
+    },
+    input: {
+      backgroundColor: mode === 'dark' ? theme.base200 : theme.base100,
+      borderWidth: 1,
+      borderColor: theme.neutral,
+      borderRadius: theme.borderRadius.xl,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: theme.baseContent,
+    },
+    textArea: {
+      height: 120,
+      textAlignVertical: 'top',
+    },
+    submitButton: {
+      backgroundColor: theme.primary,
+      borderRadius: theme.borderRadius.xl,
+      paddingVertical: 16,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    submitButtonText: {
+      color: theme.primaryContent,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    backButton: {
+      position: 'absolute',
+      top: 60,
+      left: 24,
+      zIndex: 10,
+      backgroundColor: theme.base100 + 'CC',
+      borderRadius: 20,
+      padding: 8,
+    },
+    backButtonContainer: {
+      alignItems: 'center',
+      marginTop: 32,
+    },
+    backButtonSecondary: {
+      backgroundColor: theme.base200,
+      borderRadius: theme.borderRadius.xl,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    backButtonText: {
+      color: theme.baseContent,
+      fontSize: 16,
+      fontWeight: '500',
+      marginLeft: 8,
+    },
+  });
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8f8ff' }}>
-      <BackgroundEffects />
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#7c3aed" />
-          <Text style={styles.backText}>Retour à l'accueil</Text>
-        </TouchableOpacity>
-        {/* Header */}
-        <Text style={styles.title}>Contactez-nous</Text>
-        <Text style={styles.paragraph}>Vous avez un besoin ou une question ? Contactez-nous, nous vous répondrons rapidement.</Text>
-        {/* Contact Info */}
-        <View style={styles.infoBlock}>
-          <Text style={styles.label}>Adresse :</Text>
-          <Text style={styles.info}>10 rue de Penthièvre, 75008 Paris</Text>
-          <Text style={styles.info}>+33 1 89 70 14 36</Text>
-          <Text style={styles.info}>contact@cyna-it.fr</Text>
-        </View>
-        {/* Contact Form */}
-        <View style={styles.formBlock}>
-          <Text style={styles.label}>Prénom *</Text>
-          <TextInput style={styles.input} placeholder="Votre prénom" />
-          <Text style={styles.label}>Nom *</Text>
-          <TextInput style={styles.input} placeholder="Votre nom" />
-          <Text style={styles.label}>E-mail *</Text>
-          <TextInput style={styles.input} placeholder="Votre e-mail" keyboardType="email-address" />
-          <Text style={styles.label}>Message</Text>
-          <TextInput style={[styles.input, {height: 100}]} placeholder="Votre message" multiline />
-          <Button title="Envoyer" onPress={() => {}} />
-        </View>
-        <Text style={styles.link}>← Retour à l'accueil</Text>
-      </ScrollView>
+    <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={24} color={theme.baseContent} />
+      </TouchableOpacity>
+
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.mainCard}>
+            {/* Left Section - Contact Info */}
+            <View style={styles.leftSection}>
+              <Text style={styles.title}>
+                Vous avez un besoin ou une question ?
+              </Text>
+              <Text style={styles.subtitle}>
+                Contactez-nous, nous vous répondrons rapidement.
+              </Text>
+              
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactLabel}>Adresse :</Text>
+                <Text style={styles.contactText}>
+                  10 rue de Penthièvre, 75008 Paris
+                </Text>
+              </View>
+              
+              <TouchableOpacity>
+                <Text style={styles.contactLink}>
+                  +33 1 89 70 14 36
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity>
+                <Text style={styles.contactLink}>
+                  contact@cyna-it.fr
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Right Section - Contact Form */}
+            <View style={styles.rightSection}>
+              <Text style={styles.formTitle}>Formulaire de contact</Text>
+              
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  Prénom <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Votre prénom"
+                  placeholderTextColor={theme.neutralContent}
+                  value={formData.firstName}
+                  onChangeText={(value) => handleInputChange('firstName', value)}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  Nom <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Votre nom"
+                  placeholderTextColor={theme.neutralContent}
+                  value={formData.lastName}
+                  onChangeText={(value) => handleInputChange('lastName', value)}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  E-mail <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="votre@email.com"
+                  placeholderTextColor={theme.neutralContent}
+                  value={formData.email}
+                  onChangeText={(value) => handleInputChange('email', value)}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Message</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Votre message..."
+                  placeholderTextColor={theme.neutralContent}
+                  value={formData.message}
+                  onChangeText={(value) => handleInputChange('message', value)}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+
+              <TouchableOpacity 
+                style={styles.submitButton}
+                onPress={handleSubmit}
+              >
+                <Text style={styles.submitButtonText}>Envoyer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Back to Home Button */}
+          <View style={styles.backButtonContainer}>
+            <TouchableOpacity 
+              style={styles.backButtonSecondary}
+              onPress={() => navigation.navigate('Home')}
+            >
+              <Ionicons name="arrow-back" size={16} color={theme.baseContent} />
+              <Text style={styles.backButtonText}>Retour à l'accueil</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { padding: 24, paddingTop: 60, paddingBottom: 40 },
-  backBtn: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  backText: { color: '#7c3aed', fontWeight: 'bold', marginLeft: 6, fontSize: 15 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#23234b', marginBottom: 8, textAlign: 'center' },
-  paragraph: { fontSize: 16, color: '#6b7280', marginBottom: 24, textAlign: 'center' },
-  infoBlock: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 24, padding: 20, marginBottom: 24, shadowColor: '#a78bfa', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
-  label: { fontWeight: 'bold', color: '#23234b', marginBottom: 4 },
-  info: { color: '#6b7280', marginBottom: 4 },
-  formBlock: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 24, padding: 20, shadowColor: '#a78bfa', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
-  input: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' },
-  link: { color: '#7c3aed', marginTop: 24, textAlign: 'center', fontWeight: 'bold' },
-});
 
 export default ContactScreen; 
