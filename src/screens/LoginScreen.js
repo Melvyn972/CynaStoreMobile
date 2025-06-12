@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
+import { useAuth } from '../context/AuthContext';
 
 
 const userIconSvg = `
@@ -28,7 +29,7 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
-  // const { loginWithEmail, loginWithGoogle } = useAuth(); // Adaptez selon votre contexte
+  const { login } = useAuth();
 
   const handleEmailLogin = async () => {
     if (!email) {
@@ -38,10 +39,10 @@ const LoginScreen = ({ navigation }) => {
     setIsLoading(true);
     setMessage('');
     try {
-      // Simule l'appel API pour envoyer le lien magique
-      // await loginWithEmail(email); 
+      // Appel à l'API pour envoyer le lien magique
+      await login.sendMagicLink(email);
       console.log('Sending magic link to:', email);
-      // À la place de la redirection web, naviguez vers un écran de confirmation
+      // Naviguer vers l'écran de vérification d'email
       navigation.navigate('CheckEmailScreen', { email });
     } catch (error) {
       setMessage(error.message || "Une erreur s'est produite. Veuillez réessayer.");
