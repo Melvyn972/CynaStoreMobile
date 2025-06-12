@@ -9,13 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions, // Used for responsive layout
-  Linking, // For opening external links like TOS/Privacy Policy
+  Dimensions,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient'; // For gradients
 import { useAuth } from '../context/AuthContext'; // Assuming this is your context
 
-// Placeholder for icons - in a real app, use react-native-vector-icons or SVGs
 const CheckIcon = () => (
   <View style={styles.iconCircleGreen}>
     <Text style={styles.iconTextGreen}>✓</Text>
