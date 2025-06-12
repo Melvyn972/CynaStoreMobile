@@ -3,8 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import LoadingScreen from '../screens/LoadingScreen';
 
-// Import screens (we'll create these next)
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProductsScreen from '../screens/ProductsScreen';
 import CartScreen from '../screens/CartScreen';
@@ -19,6 +22,15 @@ import CompaniesScreen from '../screens/CompaniesScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+const AuthStack = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+};
 
 const HomeStack = () => {
   return (
@@ -44,58 +56,14 @@ const ProfileStack = () => {
 };
 
 const AppNavigator = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
-
-            if (route.name === 'Accueil') {
-              iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'Boutique') {
-              iconName = focused ? 'grid' : 'grid-outline';
-            } else if (route.name === 'Panier') {
-              iconName = focused ? 'cart' : 'cart-outline';
-            } else if (route.name === 'Profil') {
-              iconName = focused ? 'person' : 'person-outline';
-            }
-
-            return <Ionicons name={iconName} size={focused ? 28 : 24} color={color} />;
-          },
-          tabBarActiveTintColor: '#7c3aed',
-          tabBarInactiveTintColor: '#a78bfa',
-          tabBarStyle: {
-            backgroundColor: '#fff',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            height: 68,
-            shadowColor: '#a78bfa',
-            shadowOpacity: 0.10,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: -2 },
-            elevation: 10,
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            borderTopWidth: 0,
-          },
-          tabBarLabelStyle: {
-            fontWeight: 'bold',
-            fontSize: 13,
-            marginBottom: 6,
-          },
-          tabBarItemStyle: {
-            marginTop: 6,
-          },
-        })}
-      >
-        <Tab.Screen name="Accueil" component={HomeStack} options={{ headerShown: false }} />
-        <Tab.Screen name="Boutique" component={ProductsScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Panier" component={CartScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Profil" component={ProfileStack} options={{ headerShown: false }} />
-      </Tab.Navigator>
+      {isAuthenticated ? <MainTabs /> : <AuthStack />}
     </NavigationContainer>
   );
 };
