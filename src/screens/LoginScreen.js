@@ -42,7 +42,7 @@ const LoginScreen = ({ navigation }) => {
       // await loginWithEmail(email); 
       console.log('Sending magic link to:', email);
       // À la place de la redirection web, naviguez vers un écran de confirmation
-      navigation.navigate('CheckEmailScreen', { email }); // Créez cet écran
+      navigation.navigate('CheckEmailScreen', { email });
     } catch (error) {
       setMessage(error.message || "Une erreur s'est produite. Veuillez réessayer.");
     } finally {

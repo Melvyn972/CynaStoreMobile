@@ -8,6 +8,7 @@ import LoadingScreen from '../screens/LoadingScreen';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import CheckEmailScreen from '../screens/CheckEmailScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProductsScreen from '../screens/ProductsScreen';
 import CartScreen from '../screens/CartScreen';
@@ -28,6 +29,7 @@ const AuthStack = () => {
     <Stack.Navigator>
       <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CheckEmailScreen" component={CheckEmailScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };
@@ -52,6 +54,53 @@ const ProfileStack = () => {
       <Stack.Screen name="Legal" component={LegalScreen} options={{ title: 'Mentions légales' }} />
       <Stack.Screen name="Companies" component={CompaniesScreen} options={{ title: 'Mes entreprises' }} />
     </Stack.Navigator>
+  );
+};
+
+const MainTabs = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Products') {
+            iconName = focused ? 'grid' : 'grid-outline';
+          } else if (route.name === 'Cart') {
+            iconName = focused ? 'cart' : 'cart-outline';
+          } else if (route.name === 'Profile') {
+            iconName = focused ? 'person' : 'person-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#8B5CF6',
+        tabBarInactiveTintColor: 'gray',
+      })}
+    >
+      <Tab.Screen 
+        name="Home" 
+        component={HomeStack} 
+        options={{ headerShown: false, title: 'Accueil' }} 
+      />
+      <Tab.Screen 
+        name="Products" 
+        component={ProductsScreen} 
+        options={{ title: 'Produits' }} 
+      />
+      <Tab.Screen 
+        name="Cart" 
+        component={CartScreen} 
+        options={{ title: 'Panier' }} 
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileStack} 
+        options={{ headerShown: false, title: 'Profil' }} 
+      />
+    </Tab.Navigator>
   );
 };
 

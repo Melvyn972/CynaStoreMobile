@@ -195,14 +195,14 @@ const RegisterScreen = ({ navigation }) => {
                   J&apos;accepte les{" "}
                   <Text
                     style={styles.linkText}
-                    onPress={() => Linking.openURL('https://yourwebsite.com/tos')} // Replace with actual URL
+                    onPress={() => Linking.openURL('https://yourwebsite.com/tos')}
                   >
                     conditions d&apos;utilisation
                   </Text>{" "}
                   et la{" "}
                   <Text
                     style={styles.linkText}
-                    onPress={() => Linking.openURL('https://yourwebsite.com/privacy-policy')} // Replace with actual URL
+                    onPress={() => Linking.openURL('https://yourwebsite.com/privacy-policy')}
                   >
                     politique de confidentialité
                   </Text>
