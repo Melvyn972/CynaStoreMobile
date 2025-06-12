@@ -170,7 +170,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleArticlePress = (article) => {
-    navigation.navigate('ArticleDetail', { articleId: article.id });
+    navigation.navigate('ProductDetail', { product: article });
   };
 
   const renderFeaturedArticleCard = (article) => (

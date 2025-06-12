@@ -319,9 +319,9 @@ const ArticleDetailScreen = ({ route, navigation }) => {
           </TouchableOpacity>
           
           <Image 
-            source={{ uri: article.image || 'https://via.placeholder.com/400x240' }} 
+            source={{ uri: article.image || 'https://picsum.photos/400/240' }} 
             style={styles.articleImage}
-            defaultSource={{ uri: 'https://via.placeholder.com/400x240' }}
+            defaultSource={{ uri: 'https://picsum.photos/400/240' }}
           />
         </View>
 
