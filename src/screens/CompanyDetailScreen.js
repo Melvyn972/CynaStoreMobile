@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,27 +10,37 @@ import {
   Modal,
   TextInput,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { companyService } from '../services';
+import { useAuth } from '../context/AuthContext';
 
 const CompanyDetailScreen = ({ navigation, route }) => {
   const { theme, mode } = useTheme();
-  const { company } = route.params;
+  const { isAuthenticated } = useAuth();
+  const { company: initialCompany } = route.params;
   const [activeTab, setActiveTab] = useState('info');
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
-  const [companyData, setCompanyData] = useState(company);
+  const [companyData, setCompanyData] = useState(initialCompany);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [loadingPurchases, setLoadingPurchases] = useState(true);
   
   const [editFormData, setEditFormData] = useState({
-    name: company.name,
-    siret: company.siret,
-    address: company.address,
-    phone: company.phone,
-    email: company.email,
-    website: company.website || '',
-    tva: company.tva || '',
-    description: company.description || ''
+    name: initialCompany.name || '',
+    siret: initialCompany.siret || '',
+    address: initialCompany.address || '',
+    phone: initialCompany.phone || '',
+    email: initialCompany.email || '',
+    website: initialCompany.website || '',
+    tva: initialCompany.tva || '',
+    description: initialCompany.description || ''
   });
 
   const [inviteFormData, setInviteFormData] = useState({
@@ -39,51 +49,111 @@ const CompanyDetailScreen = ({ navigation, route }) => {
     message: 'Rejoignez notre équipe !'
   });
 
-  const [purchases] = useState([
-    {
-      id: 1,
-      date: '2024-01-15',
-      amount: 299.99,
-      description: 'Licence logiciel CRM',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      date: '2024-01-10',
-      amount: 150.00,
-      description: 'Formation équipe',
-      status: 'completed'
-    },
-    {
-      id: 3,
-      date: '2024-01-05',
-      amount: 89.99,
-      description: 'Abonnement cloud',
-      status: 'pending'
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadCompanyDetails();
+      loadMembers();
+      loadPurchases();
     }
-  ]);
+  }, [isAuthenticated, initialCompany.id]);
+
+  const loadCompanyDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await companyService.getCompany(initialCompany.id);
+      setCompanyData(response.company);
+      setEditFormData({
+        name: response.company.name || '',
+        siret: response.company.siret || '',
+        address: response.company.address || '',
+        phone: response.company.phone || '',
+        email: response.company.email || '',
+        website: response.company.website || '',
+        tva: response.company.tva || '',
+        description: response.company.description || ''
+      });
+    } catch (error) {
+      console.error('Error loading company details:', error);
+      Alert.alert('Erreur', 'Impossible de charger les détails de l\'entreprise');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMembers = async () => {
+    try {
+      setLoadingMembers(true);
+      const response = await companyService.getCompanyMembers(initialCompany.id);
+      setMembers(response.members || []);
+    } catch (error) {
+      console.error('Error loading members:', error);
+      // Don't show error, just keep empty array
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const loadPurchases = async () => {
+    try {
+      setLoadingPurchases(true);
+      const response = await companyService.getCompanyOrders(initialCompany.id);
+      setPurchases(response.orders || []);
+    } catch (error) {
+      console.error('Error loading purchases:', error);
+      // Don't show error, just keep empty array
+    } finally {
+      setLoadingPurchases(false);
+    }
+  };
 
   const canEdit = companyData.role === 'owner' || companyData.role === 'admin';
   const canManageMembers = companyData.role === 'owner';
 
-  const saveCompanyInfo = () => {
-    setCompanyData(prev => ({ ...prev, ...editFormData }));
-    setEditModalVisible(false);
-    Alert.alert('Succès', 'Informations mises à jour avec succès.');
+  const saveCompanyInfo = async () => {
+    if (!editFormData.name || !editFormData.siret) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await companyService.updateCompany(companyData.id, editFormData);
+      setCompanyData(prev => ({ ...prev, ...response.company }));
+      setEditModalVisible(false);
+      Alert.alert('Succès', 'Informations mises à jour avec succès.');
+    } catch (error) {
+      console.error('Error updating company:', error);
+      Alert.alert('Erreur', error.message || 'Impossible de mettre à jour les informations');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const sendInvitation = () => {
+  const sendInvitation = async () => {
     if (!inviteFormData.email) {
       Alert.alert('Erreur', 'Veuillez saisir un email.');
       return;
     }
     
-    Alert.alert('Invitation envoyée', `Une invitation a été envoyée à ${inviteFormData.email}.`);
-    setInviteFormData({ email: '', role: 'member', message: 'Rejoignez notre équipe !' });
-    setInviteModalVisible(false);
+    setSaving(true);
+    try {
+      await companyService.inviteMember(companyData.id, {
+        email: inviteFormData.email,
+        role: inviteFormData.role,
+        message: inviteFormData.message
+      });
+      Alert.alert('Invitation envoyée', `Une invitation a été envoyée à ${inviteFormData.email}.`);
+      setInviteFormData({ email: '', role: 'member', message: 'Rejoignez notre équipe !' });
+      setInviteModalVisible(false);
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      Alert.alert('Erreur', error.message || 'Impossible d\'envoyer l\'invitation');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const removeMember = (member) => {
+  const removeMember = async (member) => {
     if (member.role === 'owner') {
       Alert.alert('Erreur', 'Impossible de supprimer le propriétaire.');
       return;
@@ -97,31 +167,111 @@ const CompanyDetailScreen = ({ navigation, route }) => {
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => {
-            setCompanyData(prev => ({
-              ...prev,
-              members: prev.members.filter(m => m.id !== member.id)
-            }));
-            Alert.alert('Succès', 'Membre supprimé avec succès.');
+          onPress: async () => {
+            try {
+              setSaving(true);
+              await companyService.removeMember(companyData.id, member.id);
+              setMembers(prev => prev.filter(m => m.id !== member.id));
+              Alert.alert('Succès', 'Membre supprimé avec succès.');
+            } catch (error) {
+              console.error('Error removing member:', error);
+              Alert.alert('Erreur', 'Impossible de supprimer le membre');
+            } finally {
+              setSaving(false);
+            }
           }
         }
       ]
     );
   };
 
-  const changeRole = (member, newRole) => {
+  const changeRole = async (member, newRole) => {
     if (member.role === 'owner') {
       Alert.alert('Erreur', 'Impossible de modifier le rôle du propriétaire.');
       return;
     }
 
-    setCompanyData(prev => ({
-      ...prev,
-      members: prev.members.map(m => 
+    try {
+      setSaving(true);
+      await companyService.updateMemberRole(companyData.id, member.id, newRole);
+      setMembers(prev => prev.map(m => 
         m.id === member.id ? { ...m, role: newRole } : m
-      )
-    }));
-    Alert.alert('Succès', `Rôle de ${member.name} modifié en ${newRole === 'admin' ? 'Administrateur' : 'Membre'}.`);
+      ));
+      Alert.alert('Succès', `Rôle de ${member.name} modifié en ${newRole === 'admin' ? 'Administrateur' : 'Membre'}.`);
+    } catch (error) {
+      console.error('Error changing role:', error);
+      Alert.alert('Erreur', 'Impossible de modifier le rôle');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const formatPrice = (amount) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount);
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed':
+        return theme.success;
+      case 'pending':
+        return theme.warning;
+      case 'cancelled':
+        return theme.error;
+      default:
+        return theme.neutralContent;
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'Terminé';
+      case 'pending':
+        return 'En attente';
+      case 'cancelled':
+        return 'Annulé';
+      default:
+        return status;
+    }
+  };
+
+  const getRoleColor = (role) => {
+    switch (role) {
+      case 'owner':
+        return theme.primary;
+      case 'admin':
+        return theme.warning;
+      case 'member':
+        return theme.info;
+      default:
+        return theme.neutralContent;
+    }
+  };
+
+  const getRoleText = (role) => {
+    switch (role) {
+      case 'owner':
+        return 'Propriétaire';
+      case 'admin':
+        return 'Administrateur';
+      case 'member':
+        return 'Membre';
+      default:
+        return role;
+    }
   };
 
   const styles = StyleSheet.create({
@@ -507,7 +657,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
     <View style={styles.sectionCard}>
       <Text style={styles.sectionTitle}>Membres de l'entreprise</Text>
       
-      {companyData.members?.map((member) => (
+      {members.map((member) => (
         <View key={member.id} style={styles.memberItem}>
           <View style={styles.memberAvatar}>
             <Text style={styles.memberAvatarText}>
@@ -519,7 +669,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
             <Text style={styles.memberName}>{member.name}</Text>
             <Text style={styles.memberEmail}>{member.email}</Text>
             <Text style={styles.memberRole}>
-              {member.role === 'owner' ? 'Propriétaire' : member.role === 'admin' ? 'Administrateur' : 'Membre'}
+              {getRoleText(member.role)}
             </Text>
           </View>
           
@@ -563,21 +713,21 @@ const CompanyDetailScreen = ({ navigation, route }) => {
             <View style={styles.purchaseInfo}>
               <Text style={styles.purchaseDescription}>{purchase.description}</Text>
               <Text style={styles.purchaseDate}>
-                {new Date(purchase.date).toLocaleDateString('fr-FR')}
+                {formatDate(purchase.date)}
               </Text>
               <View style={[
                 styles.statusBadge,
-                { backgroundColor: purchase.status === 'completed' ? theme.success + '20' : theme.warning + '20' }
+                { backgroundColor: getStatusColor(purchase.status) + '20' }
               ]}>
                 <Text style={[
                   styles.statusText,
-                  { color: purchase.status === 'completed' ? theme.success : theme.warning }
+                  { color: getStatusColor(purchase.status) }
                 ]}>
-                  {purchase.status === 'completed' ? 'Terminé' : 'En attente'}
+                  {getStatusText(purchase.status)}
                 </Text>
               </View>
             </View>
-            <Text style={styles.purchaseAmount}>{purchase.amount.toFixed(2)} €</Text>
+            <Text style={styles.purchaseAmount}>{formatPrice(purchase.amount)}</Text>
           </View>
         ))
       ) : (
@@ -628,7 +778,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
           <Text style={styles.companySiret}>SIRET: {companyData.siret}</Text>
           <View style={styles.roleContainer}>
             <Text style={styles.roleText}>
-              {companyData.role === 'owner' ? 'Propriétaire' : companyData.role === 'admin' ? 'Administrateur' : 'Membre'}
+              {getRoleText(companyData.role)}
             </Text>
           </View>
         </View>

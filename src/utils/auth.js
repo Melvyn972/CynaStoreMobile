@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AUTH_CONFIG } from '../config/constants';
 
-const TOKEN_KEY = 'auth_token';
-const USER_KEY = 'user_data';
+const TOKEN_KEY = AUTH_CONFIG.TOKEN_KEY;
+const USER_KEY = AUTH_CONFIG.USER_KEY;
 
 export const storeToken = async (token) => {
   try {
@@ -23,8 +24,7 @@ export const getStoredToken = async () => {
 
 export const clearStoredToken = async () => {
   try {
-    await AsyncStorage.removeItem(TOKEN_KEY);
-    await AsyncStorage.removeItem(USER_KEY);
+    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
   } catch (error) {
     console.error('Error clearing token:', error);
   }
@@ -46,5 +46,32 @@ export const getStoredUser = async () => {
   } catch (error) {
     console.error('Error getting user data:', error);
     return null;
+  }
+};
+
+// Utility function to check if token is expired (optional - requires JWT parsing)
+export const isTokenExpired = (token) => {
+  if (!token) return true;
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    
+    // Check if token expires within the refresh threshold
+    const refreshThreshold = AUTH_CONFIG.REFRESH_THRESHOLD * 60; // Convert to seconds
+    return payload.exp < (currentTime + refreshThreshold);
+  } catch (error) {
+    console.error('Error parsing token:', error);
+    return true;
+  }
+};
+
+// Clear all stored data (for complete logout)
+export const clearAllStoredData = async () => {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    await AsyncStorage.multiRemove(keys);
+  } catch (error) {
+    console.error('Error clearing all stored data:', error);
   }
 }; 

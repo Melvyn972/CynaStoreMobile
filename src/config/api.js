@@ -1,15 +1,15 @@
 import axios from 'axios';
+import { API_CONFIG } from './constants';
 
-export const API_BASE_URL = process.env.API_URL || 'http://localhost:3000/api';
+export const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: API_CONFIG.TIMEOUT,
+  headers: API_CONFIG.DEFAULT_HEADERS,
 });
 
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   async (config) => {
     try {
@@ -28,17 +28,30 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle auth errors and retries
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
   async (error) => {
-    if (error.response?.status === 401) {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
       // Handle unauthorized access
       const { clearStoredToken } = await import('../utils/auth');
       await clearStoredToken();
+      
       // You can add navigation to login screen here
+      // Example: NavigationService.navigate('Login');
     }
+
+    // Handle network errors and timeouts
+    if (!error.response) {
+      console.error('Network error:', error.message);
+    }
+
     return Promise.reject(error);
   }
 ); 

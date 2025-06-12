@@ -8,106 +8,165 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { paymentService, cartService, companyService } from '../services';
+import { useAuth } from '../context/AuthContext';
 
 const CheckoutScreen = ({ navigation, route }) => {
   const { theme, mode } = useTheme();
+  const { isAuthenticated } = useAuth();
   const { companyId } = route.params || {};
-  const [cart, setCart] = useState([]);
-  const [articles, setArticles] = useState({});
+  const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [company, setCompany] = useState(null);
+  const [loadingCompany, setLoadingCompany] = useState(false);
 
-  // Fetch company details if companyId is provided
   useEffect(() => {
-    const fetchCompanyDetails = async () => {
-      if (!companyId) return;
-      
-      try {
-        // Simulate API call - replace with actual API
-        const mockCompany = {
-          id: companyId,
-          name: 'Mon Entreprise',
-          description: 'Entreprise principale',
-          address: '123 Rue de la Tech, 75001 Paris',
-          email: 'contact@monentreprise.com'
-        };
-        setCompany(mockCompany);
-      } catch (error) {
-        console.error('Error fetching company details:', error);
-        Alert.alert('Erreur', 'Erreur lors du chargement des détails de l\'entreprise');
-        navigation.goBack();
-      }
-    };
-
-    fetchCompanyDetails();
-  }, [companyId, navigation]);
-
-  // Fetch cart items
-  useEffect(() => {
-    const fetchCart = async () => {
-      setLoading(true);
-      try {
-        // Simulate API call - replace with actual API
-        const mockCart = [
-          { id: 1, productId: 1, quantity: 2 },
-          { id: 2, productId: 2, quantity: 1 },
-        ];
-        const mockArticles = {
-          1: { id: 1, title: 'Produit 1', price: 29.99, image: 'https://via.placeholder.com/150' },
-          2: { id: 2, title: 'Produit 2', price: 49.99, image: 'https://via.placeholder.com/150' },
-        };
-        
-        setCart(mockCart);
-        setArticles(mockArticles);
-      } catch (error) {
-        console.error('Error fetching cart:', error);
-        Alert.alert('Erreur', 'Erreur lors du chargement du panier');
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Connexion requise',
+        'Vous devez être connecté pour passer commande.',
+        [
+          { text: 'Annuler', style: 'cancel', onPress: () => navigation.goBack() },
+          { text: 'Se connecter', onPress: () => navigation.navigate('Login') }
+        ]
+      );
+      return;
+    }
 
     fetchCart();
-  }, [companyId]);
+    if (companyId) {
+      fetchCompanyDetails();
+    }
+  }, [isAuthenticated, companyId]);
 
-  // Calculate total
-  const calculateTotal = () => {
-    return cart.reduce((total, item) => {
-      const article = articles[item.productId];
-      if (article) {
-        return total + (article.price * item.quantity);
+  const fetchCart = async () => {
+    try {
+      setLoading(true);
+      const response = await cartService.getCart();
+      setCartItems(response.items || []);
+      
+      if (!response.items || response.items.length === 0) {
+        Alert.alert(
+          'Panier vide',
+          'Votre panier est vide. Ajoutez des articles avant de passer commande.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
       }
-      return total;
-    }, 0).toFixed(2);
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      Alert.alert('Erreur', 'Impossible de charger le panier');
+      navigation.goBack();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCompanyDetails = async () => {
+    try {
+      setLoadingCompany(true);
+      const response = await companyService.getCompany(companyId);
+      setCompany(response.company);
+    } catch (error) {
+      console.error('Error fetching company details:', error);
+      Alert.alert('Erreur', 'Impossible de charger les détails de l\'entreprise');
+    } finally {
+      setLoadingCompany(false);
+    }
+  };
+
+  const calculateSubtotal = () => {
+    return cartItems.reduce((total, item) => {
+      return total + (item.price * item.quantity);
+    }, 0);
+  };
+
+  const calculateTax = () => {
+    const subtotal = calculateSubtotal();
+    return subtotal * 0.2; // 20% TVA
+  };
+
+  const calculateTotal = () => {
+    return (calculateSubtotal() + calculateTax()).toFixed(2);
   };
 
   const handleCheckout = async () => {
+    if (!isAuthenticated) {
+      Alert.alert('Erreur', 'Vous devez être connecté pour passer commande.');
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      Alert.alert('Erreur', 'Votre panier est vide.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      let checkoutResponse;
       
-      Alert.alert(
-        'Commande confirmée !',
-        'Votre commande a été traitée avec succès. Vous recevrez un email de confirmation.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Success')
-          }
-        ]
-      );
+      if (companyId) {
+        // Company checkout
+        checkoutResponse = await paymentService.createCompanyCheckout(companyId);
+      } else {
+        // Regular cart checkout
+        checkoutResponse = await paymentService.createCartCheckout();
+      }
+
+      if (checkoutResponse.url) {
+        // Open Stripe checkout in browser
+        const supported = await Linking.canOpenURL(checkoutResponse.url);
+        if (supported) {
+          await Linking.openURL(checkoutResponse.url);
+          
+          // Navigate to a waiting screen or back to cart
+          navigation.navigate('Cart');
+          
+          Alert.alert(
+            'Redirection vers le paiement',
+            'Vous allez être redirigé vers la page de paiement sécurisée.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          throw new Error('Impossible d\'ouvrir l\'URL de paiement');
+        }
+      } else {
+        throw new Error('URL de paiement non reçue');
+      }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      Alert.alert('Erreur', 'Erreur lors de la création de la session de paiement');
+      Alert.alert(
+        'Erreur de paiement',
+        error.message || 'Une erreur s\'est produite lors de la création de la session de paiement. Veuillez réessayer.'
+      );
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const renderCartItem = (item) => (
+    <View key={item.id} style={styles.cartItem}>
+      <Image 
+        source={{ uri: item.product?.image || item.image || 'https://via.placeholder.com/150' }} 
+        style={styles.productImage}
+        defaultSource={{ uri: 'https://via.placeholder.com/150' }}
+      />
+      <View style={styles.productInfo}>
+        <Text style={styles.productTitle}>{item.title || item.product?.title}</Text>
+        <Text style={styles.productPrice}>{item.price?.toFixed(2)} €</Text>
+      </View>
+      <View style={styles.quantityContainer}>
+        <Text style={styles.quantityText}>x{item.quantity}</Text>
+        <Text style={styles.itemTotal}>
+          {(item.price * item.quantity).toFixed(2)} €
+        </Text>
+      </View>
+    </View>
+  );
 
   const styles = StyleSheet.create({
     container: {
@@ -137,6 +196,11 @@ const CheckoutScreen = ({ navigation, route }) => {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: theme.neutralContent,
     },
     scrollContainer: {
       paddingBottom: 120,
@@ -192,6 +256,7 @@ const CheckoutScreen = ({ navigation, route }) => {
       height: 50,
       borderRadius: 8,
       marginRight: 12,
+      backgroundColor: theme.neutral + '20',
     },
     productInfo: {
       flex: 1,
@@ -200,23 +265,25 @@ const CheckoutScreen = ({ navigation, route }) => {
       fontSize: 14,
       fontWeight: '600',
       color: theme.baseContent,
-      marginBottom: 2,
+      marginBottom: 4,
     },
     productPrice: {
-      fontSize: 12,
+      fontSize: 14,
       color: theme.primary,
-      fontWeight: '600',
+      fontWeight: 'bold',
     },
-    productQuantity: {
+    quantityContainer: {
+      alignItems: 'flex-end',
+    },
+    quantityText: {
       fontSize: 14,
       color: theme.neutralContent,
-      marginLeft: 12,
+      marginBottom: 4,
     },
-    summaryCard: {
-      backgroundColor: theme.base100,
-      borderRadius: theme.borderRadius.xl,
-      padding: 16,
-      marginTop: 16,
+    itemTotal: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: theme.baseContent,
     },
     summaryRow: {
       flexDirection: 'row',
@@ -237,7 +304,8 @@ const CheckoutScreen = ({ navigation, route }) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingTop: 12,
+      marginTop: 8,
+      paddingTop: 8,
       borderTopWidth: 1,
       borderTopColor: theme.neutral,
     },
@@ -247,37 +315,9 @@ const CheckoutScreen = ({ navigation, route }) => {
       color: theme.baseContent,
     },
     totalValue: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: 'bold',
       color: theme.primary,
-    },
-    paymentSection: {
-      paddingHorizontal: 24,
-      paddingVertical: 16,
-    },
-    paymentCard: {
-      backgroundColor: theme.base200,
-      borderRadius: theme.borderRadius.xl,
-      padding: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    paymentIcon: {
-      marginRight: 12,
-    },
-    paymentInfo: {
-      flex: 1,
-    },
-    paymentTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.baseContent,
-      marginBottom: 4,
-    },
-    paymentDescription: {
-      fontSize: 14,
-      color: theme.neutralContent,
     },
     checkoutSection: {
       position: 'absolute',
@@ -289,14 +329,15 @@ const CheckoutScreen = ({ navigation, route }) => {
       borderTopColor: theme.neutral,
       paddingHorizontal: 24,
       paddingVertical: 16,
+      paddingBottom: 40,
     },
     checkoutButton: {
       backgroundColor: theme.primary,
-      paddingVertical: 16,
       borderRadius: theme.borderRadius.xl,
+      paddingVertical: 16,
+      alignItems: 'center',
       flexDirection: 'row',
       justifyContent: 'center',
-      alignItems: 'center',
     },
     checkoutButtonDisabled: {
       backgroundColor: theme.neutral,
@@ -304,22 +345,23 @@ const CheckoutScreen = ({ navigation, route }) => {
     checkoutButtonText: {
       color: theme.primaryContent,
       fontSize: 18,
-      fontWeight: '600',
+      fontWeight: 'bold',
       marginRight: 8,
     },
-    checkoutButtonTextDisabled: {
-      color: theme.neutralContent,
-    },
-    securityNote: {
+    paymentInfo: {
+      backgroundColor: theme.info + '20',
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
     },
-    securityText: {
-      fontSize: 12,
-      color: theme.neutralContent,
-      marginLeft: 8,
+    paymentInfoText: {
+      fontSize: 14,
+      color: theme.info,
+      marginLeft: 12,
+      flex: 1,
+      lineHeight: 20,
     },
   });
 
@@ -333,12 +375,32 @@ const CheckoutScreen = ({ navigation, route }) => {
           >
             <Ionicons name="arrow-back" size={24} color={theme.baseContent} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Finalisation de la commande</Text>
+          <Text style={styles.headerTitle}>Commande</Text>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.summaryLabel, { marginTop: 16, textAlign: 'center' }]}>
-            Chargement...
+          <Text style={styles.loadingText}>Chargement de votre commande...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!isAuthenticated || cartItems.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.baseContent} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Commande</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="cart-outline" size={64} color={theme.neutralContent} />
+          <Text style={styles.loadingText}>
+            {!isAuthenticated ? 'Connexion requise' : 'Panier vide'}
           </Text>
         </View>
       </View>
@@ -347,6 +409,7 @@ const CheckoutScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -354,132 +417,82 @@ const CheckoutScreen = ({ navigation, route }) => {
         >
           <Ionicons name="arrow-back" size={24} color={theme.baseContent} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Finalisation de la commande</Text>
+        <Text style={styles.headerTitle}>Commande</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Company Information */}
-        {company && (
+        {companyId && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Commande pour l'entreprise</Text>
-            <View style={styles.companyCard}>
-              <Text style={styles.companyName}>{company.name}</Text>
-              <Text style={styles.companyDescription}>{company.description}</Text>
-              <Text style={styles.companyAddress}>{company.address}</Text>
-            </View>
+            <Text style={styles.sectionTitle}>
+              <Ionicons name="business-outline" size={20} color={theme.baseContent} /> 
+              {' '}Facturation entreprise
+            </Text>
+            {loadingCompany ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : company ? (
+              <View style={styles.companyCard}>
+                <Text style={styles.companyName}>{company.name}</Text>
+                {company.description && (
+                  <Text style={styles.companyDescription}>{company.description}</Text>
+                )}
+                {company.address && (
+                  <Text style={styles.companyAddress}>{company.address}</Text>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.companyDescription}>
+                Impossible de charger les informations de l'entreprise
+              </Text>
+            )}
           </View>
         )}
 
         {/* Order Summary */}
         <View style={styles.orderSummarySection}>
-          <Text style={styles.sectionTitle}>Résumé de la commande</Text>
-          {cart.map((item) => {
-            const article = articles[item.productId];
-            if (!article) return null;
-
-            return (
-              <View key={item.id} style={styles.cartItem}>
-                <Image 
-                  source={{ uri: article.image }} 
-                  style={styles.productImage}
-                  defaultSource={{ uri: 'https://via.placeholder.com/150' }}
-                />
-                <View style={styles.productInfo}>
-                  <Text style={styles.productTitle}>{article.title}</Text>
-                  <Text style={styles.productPrice}>
-                    {article.price.toFixed(2)} €
-                  </Text>
-                </View>
-                <Text style={styles.productQuantity}>x{item.quantity}</Text>
-              </View>
-            );
-          })}
-
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Sous-total</Text>
-              <Text style={styles.summaryValue}>{calculateTotal()} €</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Livraison</Text>
-              <Text style={styles.summaryValue}>Gratuite</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>TVA (20%)</Text>
-              <Text style={styles.summaryValue}>
-                {(parseFloat(calculateTotal()) * 0.2).toFixed(2)} €
-              </Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total TTC</Text>
-              <Text style={styles.totalValue}>
-                {(parseFloat(calculateTotal()) * 1.2).toFixed(2)} €
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Payment Method */}
-        <View style={styles.paymentSection}>
-          <Text style={styles.sectionTitle}>Méthode de paiement</Text>
+          <Text style={styles.sectionTitle}>
+            <Ionicons name="receipt-outline" size={20} color={theme.baseContent} />
+            {' '}Résumé de la commande ({cartItems.length} article{cartItems.length > 1 ? 's' : ''})
+          </Text>
           
-          <View style={styles.paymentCard}>
-            <Ionicons 
-              name="card-outline" 
-              size={24} 
-              color={theme.primary} 
-              style={styles.paymentIcon}
-            />
-            <View style={styles.paymentInfo}>
-              <Text style={styles.paymentTitle}>Carte bancaire</Text>
-              <Text style={styles.paymentDescription}>
-                Paiement sécurisé via Stripe
-              </Text>
-            </View>
-            <Ionicons name="checkmark-circle" size={24} color={theme.success} />
+          {cartItems.map(renderCartItem)}
+
+          {/* Payment Information */}
+          <View style={styles.paymentInfo}>
+            <Ionicons name="shield-checkmark" size={20} color={theme.info} />
+            <Text style={styles.paymentInfoText}>
+              Paiement sécurisé par Stripe. Vos informations de paiement sont protégées et chiffrées.
+            </Text>
           </View>
 
-          <View style={styles.paymentCard}>
-            <Ionicons 
-              name="logo-paypal" 
-              size={24} 
-              color="#0070ba" 
-              style={styles.paymentIcon}
-            />
-            <View style={styles.paymentInfo}>
-              <Text style={styles.paymentTitle}>PayPal</Text>
-              <Text style={styles.paymentDescription}>
-                Paiement rapide et sécurisé
-              </Text>
-            </View>
+          {/* Price Summary */}
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Sous-total</Text>
+            <Text style={styles.summaryValue}>{calculateSubtotal().toFixed(2)} €</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>TVA (20%)</Text>
+            <Text style={styles.summaryValue}>{calculateTax().toFixed(2)} €</Text>
+          </View>
+          
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Livraison</Text>
+            <Text style={styles.summaryValue}>Gratuite</Text>
           </View>
 
-          <View style={styles.paymentCard}>
-            <Ionicons 
-              name="business-outline" 
-              size={24} 
-              color={theme.neutralContent} 
-              style={styles.paymentIcon}
-            />
-            <View style={styles.paymentInfo}>
-              <Text style={styles.paymentTitle}>Virement bancaire</Text>
-              <Text style={styles.paymentDescription}>
-                Pour les commandes entreprise
-              </Text>
-            </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>{calculateTotal()} €</Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* Checkout Section */}
+      {/* Checkout Button */}
       <View style={styles.checkoutSection}>
-        <View style={styles.securityNote}>
-          <Ionicons name="shield-checkmark" size={16} color={theme.success} />
-          <Text style={styles.securityText}>
-            Paiement 100% sécurisé • Chiffrement SSL
-          </Text>
-        </View>
-        
         <TouchableOpacity 
           style={[
             styles.checkoutButton,
@@ -489,18 +502,13 @@ const CheckoutScreen = ({ navigation, route }) => {
           disabled={isProcessing}
         >
           {isProcessing ? (
-            <>
-              <ActivityIndicator size="small" color={theme.primaryContent} />
-              <Text style={[styles.checkoutButtonText, { marginLeft: 8 }]}>
-                Traitement en cours...
-              </Text>
-            </>
+            <ActivityIndicator size="small" color={theme.primaryContent} />
           ) : (
             <>
               <Text style={styles.checkoutButtonText}>
-                Payer {(parseFloat(calculateTotal()) * 1.2).toFixed(2)} €
+                Payer {calculateTotal()} €
               </Text>
-              <Ionicons name="arrow-forward" size={18} color={theme.primaryContent} />
+              <Ionicons name="card-outline" size={20} color={theme.primaryContent} />
             </>
           )}
         </TouchableOpacity>

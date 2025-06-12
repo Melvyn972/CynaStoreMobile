@@ -9,11 +9,15 @@ import {
   Dimensions,
   Animated,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import MaskedView from '@react-native-masked-view/masked-view';
+import { articleService } from '../services';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -112,10 +116,13 @@ const faqList = [
 
 const HomeScreen = ({ navigation }) => {
   const { theme, mode } = useTheme();
+  const { isAuthenticated } = useAuth();
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef(null);
   const [featureIndex, setFeatureIndex] = useState(0);
   const [faqIndex, setFaqIndex] = useState(0);
+  const [featuredArticles, setFeaturedArticles] = useState([]);
+  const [loadingArticles, setLoadingArticles] = useState(true);
 
   useEffect(() => {
     Animated.loop(
@@ -134,18 +141,70 @@ const HomeScreen = ({ navigation }) => {
     ).start();
   }, [bounceAnim]);
 
+  useEffect(() => {
+    loadFeaturedArticles();
+  }, []);
+
+  const loadFeaturedArticles = async () => {
+    try {
+      setLoadingArticles(true);
+      const response = await articleService.getArticles(1, 6);
+      setFeaturedArticles(response.articles || []);
+    } catch (error) {
+      console.error('Error loading featured articles:', error);
+      // Ne pas afficher d'erreur, juste rester avec un tableau vide
+    } finally {
+      setLoadingArticles(false);
+    }
+  };
+
   const handleStartShopping = () => {
-    // Naviguer vers l'onglet Products
     navigation.navigate('Products');
   };
 
   const handleLearnMore = () => {
-    // Faire défiler vers la section des problèmes (première section après le hero)
     scrollViewRef.current?.scrollTo({
-      y: 600, // Approximativement la hauteur de la section hero
+      y: 600,
       animated: true,
     });
   };
+
+  const handleArticlePress = (article) => {
+    navigation.navigate('ArticleDetail', { articleId: article.id });
+  };
+
+  const renderFeaturedArticleCard = (article) => (
+    <TouchableOpacity
+      key={article.id}
+      style={styles.featuredArticleCard}
+      onPress={() => handleArticlePress(article)}
+    >
+      <Image 
+        source={{ uri: article.image || 'https://picsum.photos/150/150' }} 
+        style={styles.featuredArticleImage}
+        defaultSource={{ uri: 'https://picsum.photos/150/150' }}
+      />
+      <View style={styles.featuredArticleContent}>
+        <Text style={styles.featuredArticleTitle} numberOfLines={2}>
+          {article.title}
+        </Text>
+        <Text style={styles.featuredArticleDescription} numberOfLines={3}>
+          {article.description || article.content}
+        </Text>
+        <View style={styles.featuredArticleFooter}>
+          <Text style={styles.featuredArticlePrice}>
+            {article.price ? `${article.price.toFixed(2)} €` : 'Gratuit'}
+          </Text>
+          <View style={styles.featuredArticleRating}>
+            <Ionicons name="star" size={14} color={theme.warning} />
+            <Text style={styles.featuredArticleRatingText}>
+              {article.rating || '4.5'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   const styles = StyleSheet.create({
     container: {
@@ -422,7 +481,65 @@ const HomeScreen = ({ navigation }) => {
       fontWeight: '600',
       marginRight: 8,
     },
-  });
+    featuredArticleCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.neutral,
+      borderRadius: theme.borderRadius.xl,
+    },
+    featuredArticleImage: {
+      width: 100,
+      height: 100,
+      borderRadius: theme.borderRadius.xl,
+      marginRight: 16,
+    },
+    featuredArticleContent: {
+      flex: 1,
+    },
+    featuredArticleTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: theme.baseContent,
+      marginBottom: 8,
+    },
+    featuredArticleDescription: {
+      fontSize: 14,
+      color: theme.neutralContent,
+      lineHeight: 20,
+    },
+    featuredArticleFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    featuredArticlePrice: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: theme.primary,
+    },
+    featuredArticleRating: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+          featuredArticleRatingText: {
+        fontSize: 14,
+        color: theme.neutralContent,
+        marginLeft: 8,
+      },
+      featuredArticlesSection: {
+        paddingHorizontal: 24,
+        paddingVertical: 40,
+      },
+      featuredArticlesTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: theme.baseContent,
+        marginBottom: 24,
+        textAlign: 'center',
+      },
+    });
 
   return (
     <View style={styles.container}>
@@ -561,6 +678,16 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.ctaButtonText}>Commencer maintenant</Text>
             <Ionicons name="arrow-forward" size={18} color={theme.primaryContent} />
           </TouchableOpacity>
+        </View>
+
+        {/* Featured Articles Section */}
+        <View style={styles.featuredArticlesSection}>
+          <Text style={styles.featuredArticlesTitle}>Articles Récents</Text>
+          {loadingArticles ? (
+            <ActivityIndicator size="large" color={theme.primary} />
+          ) : (
+            featuredArticles.map(renderFeaturedArticleCard)
+          )}
         </View>
       </ScrollView>
     </View>

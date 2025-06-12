@@ -27,6 +27,7 @@ import CompaniesScreen from '../screens/CompaniesScreen';
 import CompanyDetailScreen from '../screens/CompanyDetailScreen';
 import RGPDSettingsScreen from '../screens/RGPDSettingsScreen';
 import OrdersScreen from '../screens/OrdersScreen';
+import ArticleDetailScreen from '../screens/ArticleDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -46,6 +47,7 @@ const HomeStack = () => {
     <Stack.Navigator>
       <Stack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };

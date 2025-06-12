@@ -7,15 +7,23 @@ const ThemeContext = createContext();
 export const ThemeProvider = ({ children }) => {
   const colorScheme = Appearance.getColorScheme();
   const [theme, setTheme] = useState(colorScheme === 'dark' ? darkTheme : lightTheme);
-  const [mode, setMode] = useState(colorScheme);
+  const [mode, setMode] = useState(colorScheme || 'light');
 
   useEffect(() => {
     const listener = ({ colorScheme }) => {
       setTheme(colorScheme === 'dark' ? darkTheme : lightTheme);
       setMode(colorScheme);
     };
-    Appearance.addChangeListener(listener);
-    return () => Appearance.removeChangeListener(listener);
+    
+    // Use the newer API that returns an EventSubscription
+    const subscription = Appearance.addChangeListener(listener);
+    
+    return () => {
+      // Modern way to unsubscribe
+      if (subscription && typeof subscription.remove === 'function') {
+        subscription.remove();
+      }
+    };
   }, []);
 
   const toggleTheme = () => {

@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { articleService, cartService } from '../services';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -20,11 +22,16 @@ const cardSize = (width - 48) / numColumns;
 
 const ProductsScreen = ({ navigation }) => {
   const { theme, mode } = useTheme();
+  const { isAuthenticated } = useAuth();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const categories = [
     { id: 'all', name: 'Tous', icon: 'grid-outline' },
@@ -35,56 +42,47 @@ const ProductsScreen = ({ navigation }) => {
   ];
 
   useEffect(() => {
-    // Simulate API call - replace with actual API
-    setTimeout(() => {
-      setProducts([
-        {
-          id: 1,
-          name: 'Protection Avancée',
-          price: 99.99,
-          image: 'https://via.placeholder.com/300x200',
-          description: 'Solution de cybersécurité complète pour votre entreprise',
-          category: 'security',
-          features: ['Antivirus', 'Firewall', 'Protection temps réel'],
-          popular: true,
-        },
-        {
-          id: 2,
-          name: 'Surveillance 24/7',
-          price: 149.99,
-          image: 'https://via.placeholder.com/300x200',
-          description: 'Monitoring continu de votre infrastructure',
-          category: 'monitoring',
-          features: ['Alertes temps réel', 'Rapports détaillés', 'Dashboard'],
-          popular: false,
-        },
-        {
-          id: 3,
-          name: 'Conformité RGPD',
-          price: 199.99,
-          image: 'https://via.placeholder.com/300x200',
-          description: 'Mise en conformité avec les réglementations',
-          category: 'compliance',
-          features: ['Audit RGPD', 'Documentation', 'Formation'],
-          popular: true,
-        },
-        {
-          id: 4,
-          name: 'Support Premium',
-          price: 79.99,
-          image: 'https://via.placeholder.com/300x200',
-          description: 'Assistance technique prioritaire',
-          category: 'support',
-          features: ['Support 24/7', 'Intervention rapide', 'Formation'],
-          popular: false,
-        },
-      ]);
-      setLoading(false);
-    }, 1000);
+    loadProducts();
   }, []);
 
   useEffect(() => {
-    let filtered = products;
+    filterProducts();
+  }, [products, selectedCategory, searchQuery]);
+
+  const loadProducts = async (pageNumber = 1, isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+        setPage(1);
+      } else if (pageNumber === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const response = await articleService.getArticles(pageNumber, 20);
+      
+      if (pageNumber === 1 || isRefresh) {
+        setProducts(response.articles || []);
+      } else {
+        setProducts(prev => [...prev, ...(response.articles || [])]);
+      }
+
+      setHasMore(response.pagination?.hasMore || false);
+      setPage(pageNumber);
+
+    } catch (error) {
+      console.error('Error loading products:', error);
+      Alert.alert('Erreur', 'Impossible de charger les produits');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const filterProducts = () => {
+    let filtered = [...products];
 
     // Filter by category
     if (selectedCategory !== 'all') {
@@ -92,25 +90,95 @@ const ProductsScreen = ({ navigation }) => {
     }
 
     // Filter by search query
-    if (searchQuery) {
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase())
+        product.title.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query)
       );
     }
 
     setFilteredProducts(filtered);
-  }, [products, selectedCategory, searchQuery]);
+  };
 
-  const addToCart = (product) => {
-    Alert.alert(
-      'Ajouté au panier',
-      `${product.name} a été ajouté à votre panier.`,
-      [
-        { text: 'Continuer', style: 'cancel' },
-        { text: 'Voir le panier', onPress: () => navigation.navigate('Cart') }
-      ]
-    );
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim()) {
+      try {
+        setLoading(true);
+        const response = await articleService.searchArticles(query, 1, 20);
+        setProducts(response.articles || []);
+        setHasMore(response.pagination?.hasMore || false);
+      } catch (error) {
+        console.error('Error searching products:', error);
+        Alert.alert('Erreur', 'Erreur lors de la recherche');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      loadProducts(1, true);
+    }
+  };
+
+  const handleCategoryChange = async (categoryId) => {
+    setSelectedCategory(categoryId);
+    setSearchQuery('');
+    
+    try {
+      setLoading(true);
+      if (categoryId === 'all') {
+        await loadProducts(1, true);
+      } else {
+        const response = await articleService.getArticlesByCategory(categoryId, 1, 20);
+        setProducts(response.articles || []);
+        setHasMore(response.pagination?.hasMore || false);
+      }
+    } catch (error) {
+      console.error('Error filtering by category:', error);
+      Alert.alert('Erreur', 'Erreur lors du filtrage');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToCart = async (product) => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Connexion requise',
+        'Vous devez être connecté pour ajouter des articles au panier.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Se connecter', onPress: () => navigation.navigate('Login') }
+        ]
+      );
+      return;
+    }
+
+    try {
+      await cartService.addToCart(product.id, 1);
+      Alert.alert(
+        'Ajouté au panier',
+        `${product.title} a été ajouté à votre panier.`,
+        [
+          { text: 'Continuer', style: 'cancel' },
+          { text: 'Voir le panier', onPress: () => navigation.navigate('Cart') }
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      Alert.alert('Erreur', 'Impossible d\'ajouter l\'article au panier');
+    }
+  };
+
+  const loadMoreProducts = () => {
+    if (hasMore && !loadingMore && !searchQuery) {
+      loadProducts(page + 1);
+    }
+  };
+
+  const handleRefresh = () => {
+    loadProducts(1, true);
   };
 
   const renderProduct = ({ item }) => (
@@ -119,34 +187,20 @@ const ProductsScreen = ({ navigation }) => {
       onPress={() => navigation.navigate('ProductDetail', { product: item })}
       activeOpacity={0.9}
     >
-      {item.popular && (
-        <View style={styles.popularBadge}>
-          <Text style={styles.popularBadgeText}>Populaire</Text>
-        </View>
-      )}
-      
       <Image 
-        source={{ uri: item.image }} 
+                  source={{ uri: item.image || 'https://picsum.photos/300/200' }} 
         style={styles.productImage} 
         resizeMode="cover" 
       />
       
       <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
+        <Text style={styles.productName}>{item.title}</Text>
         <Text style={styles.productDescription} numberOfLines={2}>
-          {item.description}
+          {item.description || 'Aucune description disponible'}
         </Text>
         
-        <View style={styles.featuresContainer}>
-          {item.features.slice(0, 2).map((feature, index) => (
-            <View key={index} style={styles.featureTag}>
-              <Text style={styles.featureText}>{feature}</Text>
-            </View>
-          ))}
-        </View>
-        
         <View style={styles.productFooter}>
-          <Text style={styles.productPrice}>{item.price.toFixed(2)} €</Text>
+          <Text style={styles.productPrice}>{item.price?.toFixed(2) || '0.00'} €</Text>
           <TouchableOpacity 
             style={styles.addToCartButton}
             onPress={() => addToCart(item)}
@@ -164,7 +218,7 @@ const ProductsScreen = ({ navigation }) => {
         styles.categoryButton,
         selectedCategory === item.id && styles.categoryButtonActive
       ]}
-      onPress={() => setSelectedCategory(item.id)}
+      onPress={() => handleCategoryChange(item.id)}
     >
       <Ionicons 
         name={item.icon} 
@@ -179,6 +233,15 @@ const ProductsScreen = ({ navigation }) => {
       </Text>
     </TouchableOpacity>
   );
+
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={theme.primary} />
+      </View>
+    );
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -205,7 +268,7 @@ const ProductsScreen = ({ navigation }) => {
       color: theme.baseContent,
     },
     cartButton: {
-      backgroundColor: theme.primary + '20',
+      backgroundColor: theme.base200,
       borderRadius: 12,
       padding: 8,
     },
@@ -213,7 +276,7 @@ const ProductsScreen = ({ navigation }) => {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.base200,
-      borderRadius: theme.borderRadius.xl,
+      borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 12,
       marginBottom: 16,
@@ -227,114 +290,41 @@ const ProductsScreen = ({ navigation }) => {
       color: theme.baseContent,
     },
     categoriesContainer: {
-      paddingHorizontal: 24,
-      paddingVertical: 16,
+      marginBottom: 16,
     },
     categoryButton: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.base200,
-      borderRadius: theme.borderRadius.xl,
+      borderRadius: 20,
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingVertical: 8,
       marginRight: 12,
+      borderWidth: 1,
+      borderColor: 'transparent',
     },
     categoryButtonActive: {
       backgroundColor: theme.primary,
+      borderColor: theme.primary,
     },
     categoryButtonText: {
       fontSize: 14,
-      fontWeight: '500',
       color: theme.baseContent,
       marginLeft: 8,
+      fontWeight: '500',
     },
     categoryButtonTextActive: {
       color: theme.primaryContent,
-    },
-    productsContainer: {
-      flex: 1,
-      paddingHorizontal: 16,
-    },
-    productCard: {
-      width: cardSize,
-      backgroundColor: theme.base200,
-      borderRadius: theme.borderRadius.xl,
-      overflow: 'hidden',
-      marginBottom: 16,
-      position: 'relative',
-    },
-    popularBadge: {
-      position: 'absolute',
-      top: 12,
-      right: 12,
-      backgroundColor: theme.accent,
-      borderRadius: 12,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      zIndex: 1,
-    },
-    popularBadgeText: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: theme.primaryContent,
-    },
-    productImage: {
-      width: '100%',
-      height: cardSize * 0.6,
-    },
-    productInfo: {
-      padding: 16,
-    },
-    productName: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.baseContent,
-      marginBottom: 4,
-    },
-    productDescription: {
-      fontSize: 12,
-      color: theme.neutralContent,
-      marginBottom: 12,
-      lineHeight: 16,
-    },
-    featuresContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginBottom: 12,
-    },
-    featureTag: {
-      backgroundColor: theme.primary + '20',
-      borderRadius: 8,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      marginRight: 4,
-      marginBottom: 4,
-    },
-    featureText: {
-      fontSize: 10,
-      color: theme.primary,
-      fontWeight: '500',
-    },
-    productFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    productPrice: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: theme.primary,
-    },
-    addToCartButton: {
-      backgroundColor: theme.primary,
-      borderRadius: 8,
-      padding: 8,
     },
     loadingContainer: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: theme.base100,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: theme.neutralContent,
     },
     emptyContainer: {
       flex: 1,
@@ -346,7 +336,7 @@ const ProductsScreen = ({ navigation }) => {
       marginBottom: 16,
     },
     emptyTitle: {
-      fontSize: 20,
+      fontSize: 24,
       fontWeight: 'bold',
       color: theme.baseContent,
       marginBottom: 8,
@@ -356,17 +346,94 @@ const ProductsScreen = ({ navigation }) => {
       fontSize: 16,
       color: theme.neutralContent,
       textAlign: 'center',
+      marginBottom: 24,
       lineHeight: 24,
+    },
+    emptyButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: theme.borderRadius.xl,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    emptyButtonText: {
+      color: theme.primaryContent,
+      fontSize: 16,
+      fontWeight: '600',
+      marginRight: 8,
+    },
+    productsContainer: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+    },
+    productCard: {
+      backgroundColor: theme.base200,
+      borderRadius: theme.borderRadius.xl,
+      marginBottom: 16,
+      marginRight: 16,
+      width: cardSize,
+      overflow: 'hidden',
+    },
+    productImage: {
+      width: '100%',
+      height: 120,
+      backgroundColor: theme.neutral + '20',
+    },
+    productInfo: {
+      padding: 16,
+    },
+    productName: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: theme.baseContent,
+      marginBottom: 4,
+    },
+    productDescription: {
+      fontSize: 14,
+      color: theme.neutralContent,
+      marginBottom: 12,
+      lineHeight: 20,
+    },
+    productFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    productPrice: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: theme.primary,
+    },
+    addToCartButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 8,
+      padding: 8,
+    },
+    footerLoader: {
+      paddingVertical: 20,
+      alignItems: 'center',
     },
   });
 
-  if (loading) {
+  if (loading && products.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.emptyDescription, { marginTop: 16 }]}>
-          Chargement des produits...
-        </Text>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.headerTitle}>Produits</Text>
+            <TouchableOpacity 
+              style={styles.cartButton}
+              onPress={() => navigation.navigate('Cart')}
+            >
+              <Ionicons name="cart-outline" size={24} color={theme.baseContent} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>Chargement des produits...</Text>
+        </View>
       </View>
     );
   }
@@ -376,15 +443,15 @@ const ProductsScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Boutique</Text>
+          <Text style={styles.headerTitle}>Produits</Text>
           <TouchableOpacity 
             style={styles.cartButton}
             onPress={() => navigation.navigate('Cart')}
           >
-            <Ionicons name="cart-outline" size={24} color={theme.primary} />
+            <Ionicons name="cart-outline" size={24} color={theme.baseContent} />
           </TouchableOpacity>
         </View>
-        
+
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Ionicons 
@@ -398,35 +465,48 @@ const ProductsScreen = ({ navigation }) => {
             placeholder="Rechercher un produit..."
             placeholderTextColor={theme.neutralContent}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearch}
           />
         </View>
-      </View>
 
-      {/* Categories */}
-      <View style={styles.categoriesContainer}>
+        {/* Categories */}
         <FlatList
           data={categories}
           renderItem={renderCategory}
           keyExtractor={item => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesContainer}
         />
       </View>
 
-      {/* Products */}
+      {/* Products List */}
       {filteredProducts.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons 
-            name="search-outline" 
+            name="cube-outline" 
             size={64} 
             color={theme.neutralContent} 
             style={styles.emptyIcon}
           />
-          <Text style={styles.emptyTitle}>Aucun produit trouvé</Text>
-          <Text style={styles.emptyDescription}>
-            Essayez de modifier vos critères de recherche ou explorez d'autres catégories.
+          <Text style={styles.emptyTitle}>
+            {searchQuery ? 'Aucun résultat' : 'Aucun produit'}
           </Text>
+          <Text style={styles.emptyDescription}>
+            {searchQuery 
+              ? `Aucun produit ne correspond à votre recherche "${searchQuery}"`
+              : 'Aucun produit disponible pour le moment'
+            }
+          </Text>
+          {searchQuery && (
+            <TouchableOpacity 
+              style={styles.emptyButton}
+              onPress={() => handleSearch('')}
+            >
+              <Text style={styles.emptyButtonText}>Effacer la recherche</Text>
+              <Ionicons name="close-outline" size={20} color={theme.primaryContent} />
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <FlatList
@@ -435,7 +515,11 @@ const ProductsScreen = ({ navigation }) => {
           keyExtractor={item => item.id.toString()}
           numColumns={numColumns}
           contentContainerStyle={styles.productsContainer}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          onEndReached={loadMoreProducts}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={renderFooter}
           showsVerticalScrollIndicator={false}
         />
       )}

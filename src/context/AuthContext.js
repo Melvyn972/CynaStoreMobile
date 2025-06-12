@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getStoredToken, getStoredUser } from '../utils/auth';
 import { authService } from '../services/authService';
+import { userService } from '../services/userService';
 
 const AuthContext = createContext({
   isAuthenticated: false,
@@ -8,6 +9,7 @@ const AuthContext = createContext({
   login: () => {},
   logout: () => {},
   register: () => {},
+  refreshUser: () => {},
   loading: true,
 });
 
@@ -27,9 +29,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkAuthStatus();
   }, []);
+
   console.log('isAuthenticated', isAuthenticated);  
   console.log('user', user);
   console.log('loading', loading);
+
   const checkAuthStatus = async () => {
     try {
       const token = await getStoredToken();
@@ -38,11 +42,29 @@ export const AuthProvider = ({ children }) => {
       if (token && userData) {
         setIsAuthenticated(true);
         setUser(userData);
+        
+        // Try to refresh user data from server to ensure it's up to date
+        try {
+          await refreshUser();
+        } catch (error) {
+          console.log('Could not refresh user data, using cached data');
+        }
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const updatedUser = await userService.getUserProfile();
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      throw error;
     }
   };
 
@@ -100,6 +122,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
+    refreshUser,
     loading,
   };
 
