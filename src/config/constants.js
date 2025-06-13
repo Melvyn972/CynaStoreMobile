@@ -1,15 +1,27 @@
 // API Configuration
 export const API_CONFIG = {
-  // Base URL for the backend API - update this to your CynaStoreWeb deployment URL
-  BASE_URL: process.env.API_URL || 'http://localhost:3000/api',
+  // Base URL for the backend API - uses production server by default
+  BASE_URL: process.env.API_URL || (__DEV__ ? 'https://cyna.impin.fr/api' : 'https://cyna.impin.fr/api'),
   
-  // Timeout for API requests (in milliseconds)
-  TIMEOUT: 10000,
+  // Timeout for API requests (in milliseconds) - increased for mobile
+  TIMEOUT: 15000,
   
   // Headers
   DEFAULT_HEADERS: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
+  
+  // Retry configuration
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000,
+};
+
+// Network diagnostics
+export const NETWORK_CONFIG = {
+  // Test endpoints for connectivity
+  HEALTH_CHECK: '/articles',
+  PING_ENDPOINT: '/api/articles',
 };
 
 // App Configuration
