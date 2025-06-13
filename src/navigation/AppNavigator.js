@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -7,6 +7,8 @@ import { View, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import LoadingScreen from '../screens/LoadingScreen';
+import AuthModal from '../components/AuthModal';
+import useDeepLinking from '../utils/useDeepLinking';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -178,15 +180,65 @@ const MainTabs = () => {
 };
 
 const AppNavigator = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, login } = useAuth();
+  const [modalState, setModalState] = useState({
+    visible: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+
+  const showModal = (type, title, message) => {
+    setModalState({
+      visible: true,
+      type,
+      title,
+      message
+    });
+  };
+
+  const hideModal = () => {
+    setModalState(prev => ({ ...prev, visible: false }));
+  };
+
+  // Gestion des deep links avec hook personnalisé
+  const handleAuthLink = async (token) => {
+    try {
+      await login.verifyMagicLink(token);
+      showModal(
+        'success',
+        'Connexion réussie',
+        'Vous êtes maintenant connecté à votre compte CynaStore.'
+      );
+    } catch (error) {
+      showModal(
+        'error',
+        'Erreur de connexion',
+        error.message || 'Le token de connexion est invalide ou a expiré.'
+      );
+    }
+  };
+
+  useDeepLinking(handleAuthLink);
 
   if (loading) {
     return <LoadingScreen />;
   }
+  
   return (
-    <NavigationContainer>
-      {isAuthenticated ? <MainTabs /> : <AuthStack />}
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        {isAuthenticated ? <MainTabs /> : <AuthStack />}
+      </NavigationContainer>
+      
+      <AuthModal
+        visible={modalState.visible}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+        onClose={hideModal}
+      />
+    </>
   );
 };
 

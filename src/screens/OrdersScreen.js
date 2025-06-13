@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +34,8 @@ const OrdersScreen = ({ navigation }) => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await userService.getOrders();
+      const response = await userService.getUserOrders();
+      console.log('Orders response:', response); // Pour déboguer
       setOrders(response.orders || []);
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -109,84 +111,54 @@ const OrdersScreen = ({ navigation }) => {
     }
   };
 
-  const renderOrderCard = (order) => (
-    <View key={order.id} style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        <View style={styles.orderInfo}>
-          <Text style={styles.orderId}>#{order.id}</Text>
-          <Text style={styles.orderDate}>{formatDate(order.createdAt)}</Text>
-        </View>
-        <View style={[styles.statusContainer, { backgroundColor: getStatusColor(order.status) + '20' }]}>
-          <Ionicons 
-            name={getStatusIcon(order.status)} 
-            size={14} 
-            color={getStatusColor(order.status)}
-            style={styles.statusIcon}
-          />
-          <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-            {getStatusText(order.status)}
-          </Text>
-        </View>
-      </View>
+  const renderOrderCard = (order) => {
+    // Utiliser directement les items de l'ordre
+    if (!order.items || order.items.length === 0) {
+      return null;
+    }
 
-      <View style={styles.orderDetails}>
-        <Text style={styles.orderTotal}>
-          {order.total?.toFixed(2) || '0.00'} €
-        </Text>
-        <Text style={styles.orderItems}>
-          {order.itemsCount || order.items?.length || 0} article{(order.itemsCount || order.items?.length || 0) > 1 ? 's' : ''}
-        </Text>
-
-        {order.items && order.items.length > 0 && (
-          <ScrollView style={styles.productsList} showsVerticalScrollIndicator={false}>
-            {order.items.slice(0, 3).map((item, index) => (
-              <View key={index} style={styles.productItem}>
-                <Text style={styles.productName} numberOfLines={1}>
-                  {item.title || item.name || 'Article'}
+    return (
+      <View key={order.date} style={styles.orderCard}>
+        {order.items.map((item, index) => (
+          <View 
+            key={`${order.date}-${item.article.id}-${index}`} 
+            style={[
+              styles.purchaseItem,
+              index === order.items.length - 1 && styles.lastPurchaseItem
+            ]}
+          >
+            <View style={styles.itemRow}>
+              <Image 
+                source={{ uri: item.article.image || 'https://via.placeholder.com/80x80' }} 
+                style={styles.itemImage}
+                resizeMode="cover"
+              />
+              <View style={styles.itemDetails}>
+                <View style={styles.itemHeader}>
+                  <Text style={styles.itemName}>{item.article.title}</Text>
+                  <Text style={styles.itemQuantity}>{item.quantity}x</Text>
+                </View>
+                <Text style={styles.itemTitle}>{item.article.title}</Text>
+                <Text style={styles.purchaseDate}>Acheté le {formatDate(order.date)}</Text>
+                <Text style={styles.itemPrice}>
+                  {(item.article.price * item.quantity).toFixed(2)} €
                 </Text>
-                <Text style={styles.productQuantity}>x{item.quantity}</Text>
               </View>
-            ))}
-            {order.items.length > 3 && (
-              <Text style={styles.moreItems}>
-                +{order.items.length - 3} autre{order.items.length - 3 > 1 ? 's' : ''}
-              </Text>
-            )}
-          </ScrollView>
-        )}
+            </View>
+          </View>
+        ))}
+        
+        <View style={styles.orderFooter}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total de la commande</Text>
+            <Text style={styles.orderTotal}>
+              {order.total?.toFixed(2) || '0.00'} €
+            </Text>
+          </View>
+        </View>
       </View>
-
-      <View style={styles.orderActions}>
-        <TouchableOpacity
-          style={styles.reorderButton}
-          onPress={() => {
-            Alert.alert(
-              'Commander à nouveau',
-              'Cette fonctionnalité sera bientôt disponible.',
-              [{ text: 'OK' }]
-            );
-          }}
-        >
-          <Ionicons name="refresh-outline" size={16} color={theme.primary} />
-          <Text style={styles.reorderButtonText}>Commander à nouveau</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.detailsButton}
-          onPress={() => {
-            Alert.alert(
-              'Détails de la commande',
-              `Commande #${order.id}\nTotal: ${order.total?.toFixed(2) || '0.00'} €\nStatut: ${getStatusText(order.status)}`,
-              [{ text: 'OK' }]
-            );
-          }}
-        >
-          <Text style={styles.detailsButtonText}>Détails</Text>
-          <Ionicons name="arrow-forward" size={16} color={theme.baseContent} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -229,7 +201,7 @@ const OrdersScreen = ({ navigation }) => {
       marginBottom: 16,
     },
     title: {
-      fontSize: 24,
+      fontSize: 28,
       fontWeight: 'bold',
       color: theme.baseContent,
       textAlign: 'center',
@@ -239,6 +211,7 @@ const OrdersScreen = ({ navigation }) => {
       fontSize: 16,
       color: theme.neutralContent,
       textAlign: 'center',
+      marginBottom: 8,
     },
     loadingContainer: {
       flex: 1,
@@ -289,122 +262,103 @@ const OrdersScreen = ({ navigation }) => {
     },
     orderCard: {
       backgroundColor: theme.base200,
-      borderRadius: 16,
+      borderRadius: 20,
       padding: 20,
-      marginBottom: 16,
+      marginBottom: 24,
       borderWidth: 1,
       borderColor: mode === 'dark' ? theme.neutral + '40' : theme.base300,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 3,
     },
-    orderHeader: {
+    purchaseItem: {
+      marginBottom: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: mode === 'dark' ? theme.neutral + '30' : theme.base300,
+    },
+    lastPurchaseItem: {
+      borderBottomWidth: 0,
+      marginBottom: 0,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    itemImage: {
+      width: 80,
+      height: 80,
+      borderRadius: 12,
+      marginRight: 16,
+      backgroundColor: theme.neutral + '20',
+    },
+    itemDetails: {
+      flex: 1,
+    },
+    itemHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      marginBottom: 6,
     },
-    orderInfo: {
-      flex: 1,
-    },
-    orderId: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: theme.baseContent,
-      marginBottom: 4,
-    },
-    orderDate: {
-      fontSize: 14,
-      color: theme.neutralContent,
-    },
-    statusContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 20,
-    },
-    statusIcon: {
-      marginRight: 6,
-    },
-    statusText: {
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    orderDetails: {
-      marginBottom: 16,
-    },
-    orderTotal: {
+    itemName: {
       fontSize: 18,
       fontWeight: 'bold',
       color: theme.baseContent,
-      marginBottom: 8,
-    },
-    orderItems: {
-      fontSize: 14,
-      color: theme.neutralContent,
-      marginBottom: 12,
-    },
-    productsList: {
-      maxHeight: 100,
-      marginBottom: 16,
-    },
-    productItem: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 4,
-    },
-    productName: {
-      fontSize: 14,
-      color: theme.baseContent,
       flex: 1,
+      lineHeight: 22,
     },
-    productQuantity: {
-      fontSize: 14,
-      color: theme.neutralContent,
-      fontWeight: '500',
-    },
-    moreItems: {
-      fontSize: 12,
-      color: theme.neutralContent,
-      fontStyle: 'italic',
-      marginTop: 4,
-    },
-    orderActions: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    reorderButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.primary + '20',
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      flex: 1,
-      marginRight: 8,
-      justifyContent: 'center',
-    },
-    reorderButtonText: {
-      fontSize: 14,
+    itemQuantity: {
+      fontSize: 16,
+      fontWeight: 'bold',
       color: theme.primary,
-      fontWeight: '600',
-      marginLeft: 6,
+      backgroundColor: theme.primary + '20',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+      overflow: 'hidden',
     },
-    detailsButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.base100,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderWidth: 1,
-      borderColor: theme.neutral,
+    itemTitle: {
+      fontSize: 16,
+      color: theme.neutralContent,
+      marginBottom: 6,
     },
-    detailsButtonText: {
+    purchaseDate: {
       fontSize: 14,
-      color: theme.baseContent,
+      color: theme.neutralContent,
+      marginBottom: 8,
+      fontStyle: 'italic',
+    },
+    itemPrice: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: theme.primary,
+    },
+    orderFooter: {
+      marginTop: 8,
+      paddingTop: 16,
+      borderTopWidth: 2,
+      borderTopColor: theme.primary + '30',
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    totalLabel: {
+      fontSize: 16,
       fontWeight: '600',
-      marginRight: 6,
+      color: theme.baseContent,
+    },
+    orderTotal: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: theme.primary,
     },
   });
 
@@ -427,7 +381,7 @@ const OrdersScreen = ({ navigation }) => {
             <View style={styles.headerIcon}>
               <Ionicons name="receipt-outline" size={24} color={theme.primary} />
             </View>
-            <Text style={styles.title}>Mes Commandes</Text>
+            <Text style={styles.title}>Mes achats récents</Text>
             <Text style={styles.subtitle}>Historique de vos achats</Text>
           </View>
 
@@ -474,7 +428,7 @@ const OrdersScreen = ({ navigation }) => {
             <View style={styles.headerIcon}>
               <Ionicons name="receipt-outline" size={24} color={theme.primary} />
             </View>
-            <Text style={styles.title}>Mes Commandes</Text>
+            <Text style={styles.title}>Mes achats récents</Text>
             <Text style={styles.subtitle}>Historique de vos achats</Text>
           </View>
 
@@ -505,7 +459,7 @@ const OrdersScreen = ({ navigation }) => {
           <View style={styles.headerIcon}>
             <Ionicons name="receipt-outline" size={24} color={theme.primary} />
           </View>
-          <Text style={styles.title}>Mes Commandes</Text>
+          <Text style={styles.title}>Mes achats récents</Text>
           <Text style={styles.subtitle}>
             {orders.length > 0 
               ? `${orders.length} commande${orders.length > 1 ? 's' : ''}`
@@ -535,7 +489,7 @@ const OrdersScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         ) : (
-          orders.map(renderOrderCard)
+          orders.map((order) => renderOrderCard(order))
         )}
       </ScrollView>
     </SafeAreaView>

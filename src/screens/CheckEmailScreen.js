@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import { checkClipboardForToken } from '../utils/clipboardService';
 
 const emailIconSvg = `
 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -23,7 +24,36 @@ const CheckEmailScreen = ({ route, navigation }) => {
   const [token, setToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [clipboardToken, setClipboardToken] = useState('');
+  const [showClipboardOption, setShowClipboardOption] = useState(false);
   const { login } = useAuth();
+
+  // Vérifier le presse-papiers au chargement
+  useEffect(() => {
+    checkClipboard();
+    
+    // Vérifier le presse-papiers toutes les 2 secondes si l'écran est actif
+    const interval = setInterval(checkClipboard, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkClipboard = async () => {
+    const { hasToken, token: detectedToken } = await checkClipboardForToken();
+    
+    if (hasToken && detectedToken !== token) {
+      setClipboardToken(detectedToken);
+      setShowClipboardOption(true);
+    } else if (detectedToken === token) {
+      setShowClipboardOption(false);
+    }
+  };
+
+  const pasteFromClipboard = () => {
+    setToken(clipboardToken);
+    setShowClipboardOption(false);
+    setErrorMessage('');
+  };
 
   const handleTokenSubmit = async () => {
     if (!token.trim()) {
@@ -64,11 +94,29 @@ const CheckEmailScreen = ({ route, navigation }) => {
 
           <View style={styles.form}>
             <Text style={styles.label}>Token de connexion</Text>
+            
+            {showClipboardOption && (
+              <TouchableOpacity 
+                style={styles.clipboardButton}
+                onPress={pasteFromClipboard}
+              >
+                <Text style={styles.clipboardText}>
+                  📋 Coller le token depuis le presse-papiers
+                </Text>
+                <Text style={styles.clipboardToken}>
+                  {clipboardToken.substring(0, 20)}...
+                </Text>
+              </TouchableOpacity>
+            )}
+            
             <TextInput
               style={styles.input}
               placeholder="Entrez le token reçu par email"
               value={token}
-              onChangeText={setToken}
+              onChangeText={(text) => {
+                setToken(text);
+                setErrorMessage('');
+              }}
               autoCapitalize="none"
               placeholderTextColor="#9CA3AF"
             />
@@ -179,6 +227,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111827',
     marginBottom: 16,
+  },
+  clipboardButton: {
+    backgroundColor: '#EBF4FF',
+    borderColor: '#3B82F6',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  clipboardText: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  clipboardToken: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontFamily: 'monospace',
   },
   errorText: {
     color: '#B91C1C',

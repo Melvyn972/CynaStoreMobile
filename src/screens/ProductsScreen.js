@@ -195,45 +195,53 @@ const ProductsScreen = ({ navigation }) => {
     loadProducts(1, true);
   };
 
+  const formatDate = (dateString) => {
+    const date = dateString ? new Date(dateString) : new Date();
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   const renderProduct = ({ item }) => {
     const isLoadingThisItem = addingToCart[item.id];
     
     return (
       <TouchableOpacity
+        key={item.id}
         style={styles.productCard}
         onPress={() => navigation.navigate('ProductDetail', { product: item })}
         activeOpacity={0.9}
       >
-        <Image 
-          source={{ uri: item.image || 'https://picsum.photos/300/200' }} 
-          style={styles.productImage} 
-          resizeMode="cover" 
-        />
-        
-        <View style={styles.productInfo}>
-          <Text style={styles.productName}>{item.title}</Text>
-          <Text style={styles.productDescription} numberOfLines={2}>
-            {item.description || 'Aucune description disponible'}
-          </Text>
-          
-          <View style={styles.productFooter}>
-            <Text style={styles.productPrice}>{item.price?.toFixed(2) || '0.00'} €</Text>
-            <TouchableOpacity 
-              style={[
-                styles.addToCartButton,
-                isLoadingThisItem && styles.addToCartButtonLoading
-              ]}
-              onPress={() => addToCart(item)}
-              disabled={isLoadingThisItem}
-            >
-              {isLoadingThisItem ? (
-                <ActivityIndicator size={16} color={theme.primaryContent} />
-              ) : (
-                <Ionicons name="cart-outline" size={16} color={theme.primaryContent} />
-              )}
-            </TouchableOpacity>
+        <View style={styles.productHeader}>
+          <View style={styles.productTitleRow}>
+            <Text style={styles.productName}>{item.title}</Text>
+            <Text style={styles.productQuantity}>1x</Text>
           </View>
+          <Text style={styles.productNameRepeat}>{item.title}</Text>
+          <Text style={styles.productDate}>Disponible depuis le {formatDate(item.createdAt)}</Text>
         </View>
+        
+        <Text style={styles.productPrice}>{item.price?.toFixed(2) || '0.00'} €</Text>
+        
+        <TouchableOpacity 
+          style={[
+            styles.addToCartButton,
+            isLoadingThisItem && styles.addToCartButtonLoading
+          ]}
+          onPress={() => addToCart(item)}
+          disabled={isLoadingThisItem}
+        >
+          {isLoadingThisItem ? (
+            <ActivityIndicator size={16} color={theme.primaryContent} />
+          ) : (
+            <Ionicons name="cart-outline" size={16} color={theme.primaryContent} />
+          )}
+          <Text style={styles.addToCartButtonText}>
+            {isLoadingThisItem ? 'Ajout...' : 'Ajouter'}
+          </Text>
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
@@ -395,50 +403,63 @@ const ProductsScreen = ({ navigation }) => {
     },
     productCard: {
       backgroundColor: theme.base200,
-      borderRadius: theme.borderRadius.xl,
-      marginBottom: 16,
-      marginRight: 16,
-      width: cardSize,
-      overflow: 'hidden',
-    },
-    productImage: {
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: mode === 'dark' ? theme.neutral + '40' : theme.base300,
       width: '100%',
-      height: 120,
-      backgroundColor: theme.neutral + '20',
     },
-    productInfo: {
-      padding: 16,
+    productHeader: {
+      marginBottom: 16,
+    },
+    productTitleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 4,
     },
     productName: {
       fontSize: 16,
       fontWeight: 'bold',
       color: theme.baseContent,
+      flex: 1,
+    },
+    productQuantity: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: theme.baseContent,
+    },
+    productNameRepeat: {
+      fontSize: 16,
+      color: theme.baseContent,
       marginBottom: 4,
     },
-    productDescription: {
+    productDate: {
       fontSize: 14,
       color: theme.neutralContent,
-      marginBottom: 12,
-      lineHeight: 20,
-    },
-    productFooter: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      marginBottom: 8,
     },
     productPrice: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: 'bold',
-      color: theme.primary,
+      color: theme.baseContent,
+      textAlign: 'left',
+      marginBottom: 16,
     },
     addToCartButton: {
       backgroundColor: theme.primary,
-      borderRadius: 8,
-      padding: 8,
-      minWidth: 32,
-      minHeight: 32,
+      borderRadius: 12,
+      padding: 12,
+      flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    addToCartButtonText: {
+      color: theme.primaryContent,
+      fontSize: 16,
+      fontWeight: '600',
+      marginLeft: 8,
     },
     addToCartButtonLoading: {
       opacity: 0.7,
@@ -454,7 +475,7 @@ const ProductsScreen = ({ navigation }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <Text style={styles.headerTitle}>Produits</Text>
+            <Text style={styles.headerTitle}>Nos produits récents</Text>
             <TouchableOpacity 
               style={styles.cartButton}
               onPress={() => navigation.navigate('Cart')}
@@ -476,7 +497,7 @@ const ProductsScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Produits</Text>
+                      <Text style={styles.headerTitle}>Nos produits récents</Text>
           <TouchableOpacity 
             style={styles.cartButton}
             onPress={() => navigation.navigate('Cart')}
@@ -546,7 +567,7 @@ const ProductsScreen = ({ navigation }) => {
           data={filteredProducts}
           renderItem={renderProduct}
           keyExtractor={item => item.id.toString()}
-          numColumns={numColumns}
+          numColumns={1}
           contentContainerStyle={styles.productsContainer}
           refreshing={refreshing}
           onRefresh={handleRefresh}
