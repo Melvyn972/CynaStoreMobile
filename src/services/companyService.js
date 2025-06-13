@@ -59,6 +59,17 @@ export const companyService = {
     }
   },
 
+  getCompanyOrders: async (companyId, page = 1, limit = 10) => {
+    try {
+      const response = await apiClient.get(`/companies/${companyId}/orders`, {
+        params: { page, limit },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
   updateMemberRole: async (companyId, memberId, role) => {
     try {
       const response = await apiClient.put(`/companies/${companyId}/members/${memberId}/role`, {
@@ -79,9 +90,18 @@ export const companyService = {
     }
   },
 
-  sendInvitation: async (companyId, invitationData) => {
+  inviteMember: async (companyId, invitationData) => {
     try {
       const response = await apiClient.post(`/companies/${companyId}/invite`, invitationData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  leaveCompany: async (companyId) => {
+    try {
+      const response = await apiClient.post(`/companies/${companyId}/leave`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

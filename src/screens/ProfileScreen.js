@@ -296,15 +296,6 @@ const ProfileScreen = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Profil</Text>
-          <TouchableOpacity 
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={24} color={theme.baseContent} />
-          </TouchableOpacity>
-        </View>
 
         {/* Profile Card */}
         <View style={styles.profileCard}>

@@ -16,10 +16,11 @@ import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { companyService } from '../services';
 import { useAuth } from '../context/AuthContext';
+import { getStoredToken } from '../utils/auth';
 
 const CompanyDetailScreen = ({ navigation, route }) => {
   const { theme, mode } = useTheme();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { company: initialCompany } = route.params;
   const [activeTab, setActiveTab] = useState('info');
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -31,6 +32,11 @@ const CompanyDetailScreen = ({ navigation, route }) => {
   const [purchases, setPurchases] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [loadingPurchases, setLoadingPurchases] = useState(true);
+  const [authStatus, setAuthStatus] = useState({
+    isAuthenticated: false,
+    hasToken: false,
+    user: null,
+  });
   
   const [editFormData, setEditFormData] = useState({
     name: initialCompany.name || '',
@@ -50,17 +56,45 @@ const CompanyDetailScreen = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    if (isAuthenticated) {
+    checkAuthStatus();
+  }, []);
+
+  useEffect(() => {
+    if (authStatus.isAuthenticated && authStatus.hasToken) {
       loadCompanyDetails();
       loadMembers();
       loadPurchases();
     }
-  }, [isAuthenticated, initialCompany.id]);
+  }, [authStatus.isAuthenticated, authStatus.hasToken, initialCompany.id]);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await getStoredToken();
+      console.log('🔍 Debug - Token:', token ? 'Present' : 'Missing');
+      console.log('🔍 Debug - IsAuthenticated:', isAuthenticated);
+      console.log('🔍 Debug - User:', user);
+      
+      setAuthStatus({
+        isAuthenticated,
+        hasToken: !!token,
+        user,
+      });
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setAuthStatus({
+        isAuthenticated: false,
+        hasToken: false,
+        user: null,
+      });
+    }
+  };
 
   const loadCompanyDetails = async () => {
     try {
       setLoading(true);
+      console.log('📡 Loading company details for:', initialCompany.id);
       const response = await companyService.getCompany(initialCompany.id);
+      console.log('✅ Company details loaded:', response);
       setCompanyData(response.company);
       setEditFormData({
         name: response.company.name || '',
@@ -73,8 +107,20 @@ const CompanyDetailScreen = ({ navigation, route }) => {
         description: response.company.description || ''
       });
     } catch (error) {
-      console.error('Error loading company details:', error);
-      Alert.alert('Erreur', 'Impossible de charger les détails de l\'entreprise');
+      console.error('❌ Error loading company details:', error);
+      
+      if (error.error === 'Vous devez être connecté') {
+        Alert.alert(
+          'Connexion requise',
+          'Vous devez être connecté pour voir les détails de l\'entreprise. Voulez-vous vous connecter maintenant ?',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Se connecter', onPress: () => navigation.navigate('Login') }
+          ]
+        );
+      } else {
+        Alert.alert('Erreur', 'Impossible de charger les détails de l\'entreprise');
+      }
     } finally {
       setLoading(false);
     }
@@ -83,11 +129,16 @@ const CompanyDetailScreen = ({ navigation, route }) => {
   const loadMembers = async () => {
     try {
       setLoadingMembers(true);
+      console.log('📡 Loading members for company:', initialCompany.id);
       const response = await companyService.getCompanyMembers(initialCompany.id);
+      console.log('✅ Members loaded:', response);
       setMembers(response.members || []);
     } catch (error) {
-      console.error('Error loading members:', error);
-      // Don't show error, just keep empty array
+      console.error('❌ Error loading members:', error);
+      if (error.error !== 'Vous devez être connecté') {
+        // Don't show error for auth issues, already handled above
+        console.log('Members loading failed, keeping empty array');
+      }
     } finally {
       setLoadingMembers(false);
     }
@@ -96,11 +147,16 @@ const CompanyDetailScreen = ({ navigation, route }) => {
   const loadPurchases = async () => {
     try {
       setLoadingPurchases(true);
+      console.log('📡 Loading purchases for company:', initialCompany.id);
       const response = await companyService.getCompanyOrders(initialCompany.id);
+      console.log('✅ Purchases loaded:', response);
       setPurchases(response.orders || []);
     } catch (error) {
-      console.error('Error loading purchases:', error);
-      // Don't show error, just keep empty array
+      console.error('❌ Error loading purchases:', error);
+      if (error.error !== 'Vous devez être connecté') {
+        // Don't show error for auth issues, already handled above
+        console.log('Purchases loading failed, keeping empty array');
+      }
     } finally {
       setLoadingPurchases(false);
     }
@@ -147,7 +203,12 @@ const CompanyDetailScreen = ({ navigation, route }) => {
       setInviteModalVisible(false);
     } catch (error) {
       console.error('Error sending invitation:', error);
-      Alert.alert('Erreur', error.message || 'Impossible d\'envoyer l\'invitation');
+      // Handle different error types
+      if (error.code === 'ECONNABORTED') {
+        Alert.alert('Invitation en cours', 'L\'invitation est en cours d\'envoi. Veuillez patienter...');
+      } else {
+        Alert.alert('Erreur', error.message || 'Impossible d\'envoyer l\'invitation');
+      }
     } finally {
       setSaving(false);
     }
@@ -598,6 +659,56 @@ const CompanyDetailScreen = ({ navigation, route }) => {
       color: theme.neutralContent,
       textAlign: 'center',
     },
+    authDebugContainer: {
+      alignItems: 'center',
+      padding: 20,
+    },
+    authDebugIcon: {
+      backgroundColor: theme.warning + '20',
+      borderRadius: 20,
+      padding: 12,
+      marginBottom: 16,
+    },
+    authDebugTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.warning,
+      marginBottom: 8,
+    },
+    authDebugText: {
+      fontSize: 14,
+      color: theme.warning,
+    },
+    debugInfo: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+      marginBottom: 16,
+    },
+    debugInfoText: {
+      fontSize: 14,
+      color: theme.baseContent,
+    },
+    loginButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      padding: 16,
+    },
+    loginButtonText: {
+      color: theme.primaryContent,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    retryButton: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      padding: 16,
+    },
+    retryButtonText: {
+      color: theme.primaryContent,
+      fontSize: 16,
+      fontWeight: '600',
+    },
   });
 
   const renderInfoTab = () => (
@@ -757,6 +868,58 @@ const CompanyDetailScreen = ({ navigation, route }) => {
     }
   };
 
+  // Show auth status debug info if not authenticated
+  if (!authStatus.isAuthenticated || !authStatus.hasToken) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.baseContent} />
+            <Text style={styles.backButtonText}>Retour aux entreprises</Text>
+          </TouchableOpacity>
+
+          <View style={styles.authDebugContainer}>
+            <View style={styles.authDebugIcon}>
+              <Ionicons name="warning-outline" size={40} color={theme.warning} />
+            </View>
+            <Text style={styles.authDebugTitle}>Problème d'authentification</Text>
+            <Text style={styles.authDebugText}>
+              État de la connexion:
+            </Text>
+            <View style={styles.debugInfo}>
+              <Text style={styles.debugInfoText}>
+                • Authentifié: {authStatus.isAuthenticated ? '✅ Oui' : '❌ Non'}
+              </Text>
+              <Text style={styles.debugInfoText}>
+                • Token présent: {authStatus.hasToken ? '✅ Oui' : '❌ Non'}
+              </Text>
+              <Text style={styles.debugInfoText}>
+                • Utilisateur: {authStatus.user ? `✅ ${authStatus.user.email}` : '❌ Aucun'}
+              </Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.loginButton}
+              onPress={() => navigation.navigate('Login')}
+            >
+              <Text style={styles.loginButtonText}>Se connecter</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={checkAuthStatus}
+            >
+              <Text style={styles.retryButtonText}>Vérifier à nouveau</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
@@ -793,7 +956,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
               styles.tabText,
               activeTab === 'info' && styles.tabTextActive
             ]}>
-              ℹ️ Infos
+              Infos
             </Text>
           </TouchableOpacity>
           
@@ -805,7 +968,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
               styles.tabText,
               activeTab === 'members' && styles.tabTextActive
             ]}>
-              👥 Membres
+              Membres
             </Text>
           </TouchableOpacity>
           
@@ -817,7 +980,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
               styles.tabText,
               activeTab === 'purchases' && styles.tabTextActive
             ]}>
-              🛒 Achats
+              Achats
             </Text>
           </TouchableOpacity>
         </View>
@@ -971,18 +1134,19 @@ const CompanyDetailScreen = ({ navigation, route }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Inviter un membre</Text>
             
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Email</Text>
-              <TextInput
-                style={styles.formInput}
-                value={inviteFormData.email}
-                onChangeText={(text) => setInviteFormData(prev => ({ ...prev, email: text }))}
-                placeholder="email@exemple.fr"
-                placeholderTextColor={theme.neutralContent}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+                          <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Email</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={inviteFormData.email}
+                  onChangeText={(text) => setInviteFormData(prev => ({ ...prev, email: text }))}
+                  placeholder="email@exemple.fr"
+                  placeholderTextColor={theme.neutralContent}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!saving}
+                />
+              </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Rôle</Text>
@@ -993,6 +1157,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
                     { backgroundColor: inviteFormData.role === 'member' ? theme.primary : theme.base200 }
                   ]}
                   onPress={() => setInviteFormData(prev => ({ ...prev, role: 'member' }))}
+                  disabled={saving}
                 >
                   <Text style={[
                     styles.roleSelectorText,
@@ -1008,6 +1173,7 @@ const CompanyDetailScreen = ({ navigation, route }) => {
                     { backgroundColor: inviteFormData.role === 'admin' ? theme.primary : theme.base200 }
                   ]}
                   onPress={() => setInviteFormData(prev => ({ ...prev, role: 'admin' }))}
+                  disabled={saving}
                 >
                   <Text style={[
                     styles.roleSelectorText,
@@ -1019,38 +1185,45 @@ const CompanyDetailScreen = ({ navigation, route }) => {
               </View>
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Message</Text>
-              <TextInput
-                style={[styles.formInput, styles.formInputMultiline]}
-                value={inviteFormData.message}
-                onChangeText={(text) => setInviteFormData(prev => ({ ...prev, message: text }))}
-                placeholder="Message d'invitation..."
-                placeholderTextColor={theme.neutralContent}
-                multiline={true}
-                numberOfLines={3}
-              />
-            </View>
+                          <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Message</Text>
+                <TextInput
+                  style={[styles.formInput, styles.formInputMultiline]}
+                  value={inviteFormData.message}
+                  onChangeText={(text) => setInviteFormData(prev => ({ ...prev, message: text }))}
+                  placeholder="Message d'invitation..."
+                  placeholderTextColor={theme.neutralContent}
+                  multiline={true}
+                  numberOfLines={3}
+                  editable={!saving}
+                />
+              </View>
             
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => setInviteModalVisible(false)}
-              >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>
-                  Annuler
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonSave]}
-                onPress={sendInvitation}
-              >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextSave]}>
-                  Envoyer
-                </Text>
-              </TouchableOpacity>
-            </View>
+                          <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => setInviteModalVisible(false)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>
+                    Annuler
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonSave]}
+                  onPress={sendInvitation}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color={theme.primaryContent} />
+                  ) : (
+                    <Text style={[styles.modalButtonText, styles.modalButtonTextSave]}>
+                      Envoyer
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
           </View>
         </View>
       </Modal>

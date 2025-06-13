@@ -26,8 +26,10 @@ const CompaniesScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [invitationModalVisible, setInvitationModalVisible] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [selectedInvitation, setSelectedInvitation] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
   const [activeTab, setActiveTab] = useState('companies');
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -58,7 +60,14 @@ const CompaniesScreen = ({ navigation }) => {
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données');
+      setConfirmAction({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Impossible de charger les données',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModalVisible(false)
+      });
+      setConfirmModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -127,7 +136,14 @@ const CompaniesScreen = ({ navigation }) => {
 
   const saveCompany = async () => {
     if (!formData.name || !formData.siret) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires (Nom et SIRET).');
+      setConfirmAction({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Veuillez remplir tous les champs obligatoires (Nom et SIRET).',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModalVisible(false)
+      });
+      setConfirmModalVisible(true);
       return;
     }
 
@@ -140,16 +156,21 @@ const CompaniesScreen = ({ navigation }) => {
             ? { ...company, ...response.company }
             : company
         ));
-        Alert.alert('Succès', 'Entreprise modifiée avec succès.');
       } else {
         const response = await companyService.createCompany(formData);
         setCompanies(prev => [...prev, response.company]);
-        Alert.alert('Succès', 'Entreprise créée avec succès.');
       }
       setModalVisible(false);
     } catch (error) {
       console.error('Error saving company:', error);
-      Alert.alert('Erreur', error.message || 'Une erreur est survenue lors de la sauvegarde');
+      setConfirmAction({
+        type: 'error',
+        title: 'Erreur',
+        message: error.message || 'Une erreur est survenue lors de la sauvegarde',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModalVisible(false)
+      });
+      setConfirmModalVisible(true);
     } finally {
       setSaving(false);
     }
@@ -160,104 +181,136 @@ const CompaniesScreen = ({ navigation }) => {
       setSaving(true);
       await companyService.acceptInvitation(invitation.id);
       await loadData();
-      Alert.alert('Succès', 'Invitation acceptée avec succès.');
     } catch (error) {
       console.error('Error accepting invitation:', error);
-      Alert.alert('Erreur', error.message || 'Impossible d\'accepter l\'invitation');
+      setConfirmAction({
+        type: 'error',
+        title: 'Erreur',
+        message: error.message || 'Impossible d\'accepter l\'invitation',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModalVisible(false)
+      });
+      setConfirmModalVisible(true);
     } finally {
       setSaving(false);
     }
   };
 
   const declineInvitation = async (invitation) => {
-    Alert.alert(
-      'Refuser l\'invitation',
-      'Êtes-vous sûr de vouloir refuser cette invitation ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Refuser',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setSaving(true);
-              await companyService.declineInvitation(invitation.id);
-              setInvitations(prev => prev.filter(inv => inv.id !== invitation.id));
-              Alert.alert('Information', 'Invitation refusée.');
-            } catch (error) {
-              console.error('Error declining invitation:', error);
-              Alert.alert('Erreur', 'Impossible de refuser l\'invitation');
-            } finally {
-              setSaving(false);
-            }
-          }
+    setConfirmAction({
+      type: 'decline',
+      title: 'Refuser l\'invitation',
+      message: 'Êtes-vous sûr de vouloir refuser cette invitation ?',
+      confirmText: 'Refuser',
+      cancelText: 'Annuler',
+      onConfirm: async () => {
+        try {
+          setSaving(true);
+          setConfirmModalVisible(false);
+          await companyService.declineInvitation(invitation.id);
+          setInvitations(prev => prev.filter(inv => inv.id !== invitation.id));
+        } catch (error) {
+          console.error('Error declining invitation:', error);
+          setConfirmAction({
+            type: 'error',
+            title: 'Erreur',
+            message: 'Impossible de refuser l\'invitation',
+            confirmText: 'OK',
+            onConfirm: () => setConfirmModalVisible(false)
+          });
+          setConfirmModalVisible(true);
+        } finally {
+          setSaving(false);
         }
-      ]
-    );
+      }
+    });
+    setConfirmModalVisible(true);
   };
 
   const deleteCompany = (company) => {
     if (company.role !== 'owner') {
-      Alert.alert('Erreur', 'Seul le propriétaire peut supprimer l\'entreprise');
+      setConfirmAction({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Seul le propriétaire peut supprimer l\'entreprise',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModalVisible(false)
+      });
+      setConfirmModalVisible(true);
       return;
     }
 
-    Alert.alert(
-      'Supprimer l\'entreprise',
-      `Êtes-vous sûr de vouloir supprimer "${company.name}" ? Cette action est irréversible.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setSaving(true);
-              await companyService.deleteCompany(company.id);
-              setCompanies(prev => prev.filter(c => c.id !== company.id));
-              Alert.alert('Succès', 'Entreprise supprimée avec succès.');
-            } catch (error) {
-              console.error('Error deleting company:', error);
-              Alert.alert('Erreur', error.message || 'Impossible de supprimer l\'entreprise');
-            } finally {
-              setSaving(false);
-            }
-          }
+    setConfirmAction({
+      type: 'delete',
+      title: 'Supprimer l\'entreprise',
+      message: `Êtes-vous sûr de vouloir supprimer "${company.name}" ? Cette action est irréversible.`,
+      confirmText: 'Supprimer',
+      cancelText: 'Annuler',
+      onConfirm: async () => {
+        try {
+          setSaving(true);
+          setConfirmModalVisible(false);
+          await companyService.deleteCompany(company.id);
+          setCompanies(prev => prev.filter(c => c.id !== company.id));
+        } catch (error) {
+          console.error('Error deleting company:', error);
+          setConfirmAction({
+            type: 'error',
+            title: 'Erreur',
+            message: error.message || 'Impossible de supprimer l\'entreprise',
+            confirmText: 'OK',
+            onConfirm: () => setConfirmModalVisible(false)
+          });
+          setConfirmModalVisible(true);
+        } finally {
+          setSaving(false);
         }
-      ]
-    );
+      }
+    });
+    setConfirmModalVisible(true);
   };
 
   const leaveCompany = (company) => {
     if (company.role === 'owner') {
-      Alert.alert('Erreur', 'Le propriétaire ne peut pas quitter l\'entreprise. Transférez d\'abord la propriété ou supprimez l\'entreprise.');
+      setConfirmAction({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Le propriétaire ne peut pas quitter l\'entreprise. Transférez d\'abord la propriété ou supprimez l\'entreprise.',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmModalVisible(false)
+      });
+      setConfirmModalVisible(true);
       return;
     }
 
-    Alert.alert(
-      'Quitter l\'entreprise',
-      `Êtes-vous sûr de vouloir quitter "${company.name}" ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Quitter',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setSaving(true);
-              await companyService.leaveCompany(company.id);
-              setCompanies(prev => prev.filter(c => c.id !== company.id));
-              Alert.alert('Information', 'Vous avez quitté l\'entreprise.');
-            } catch (error) {
-              console.error('Error leaving company:', error);
-              Alert.alert('Erreur', error.message || 'Impossible de quitter l\'entreprise');
-            } finally {
-              setSaving(false);
-            }
-          }
+    setConfirmAction({
+      type: 'leave',
+      title: 'Quitter l\'entreprise',
+      message: `Êtes-vous sûr de vouloir quitter "${company.name}" ?`,
+      confirmText: 'Quitter',
+      cancelText: 'Annuler',
+      onConfirm: async () => {
+        try {
+          setSaving(true);
+          setConfirmModalVisible(false);
+          await companyService.leaveCompany(company.id);
+          setCompanies(prev => prev.filter(c => c.id !== company.id));
+        } catch (error) {
+          console.error('Error leaving company:', error);
+          setConfirmAction({
+            type: 'error',
+            title: 'Erreur',
+            message: error.message || 'Impossible de quitter l\'entreprise',
+            confirmText: 'OK',
+            onConfirm: () => setConfirmModalVisible(false)
+          });
+          setConfirmModalVisible(true);
+        } finally {
+          setSaving(false);
         }
-      ]
-    );
+      }
+    });
+    setConfirmModalVisible(true);
   };
 
   const formatDate = (dateString) => {
@@ -722,13 +775,24 @@ const CompaniesScreen = ({ navigation }) => {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
+      alignItems: 'center',
       paddingHorizontal: 20,
+      paddingVertical: 40,
     },
     modalContent: {
       backgroundColor: theme.base100,
-      borderRadius: theme.borderRadius.xl,
+      borderRadius: theme.borderRadius?.xl || 16,
       padding: 24,
-      maxHeight: '80%',
+      width: '100%',
+      maxHeight: '90%',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     modalTitle: {
       fontSize: 20,
@@ -792,6 +856,19 @@ const CompaniesScreen = ({ navigation }) => {
     },
     modalButtonTextSave: {
       color: theme.primaryContent,
+    },
+    modalButtonDanger: {
+      backgroundColor: theme.error,
+    },
+    modalButtonTextDanger: {
+      color: theme.errorContent,
+    },
+    confirmMessage: {
+      fontSize: 16,
+      color: theme.baseContent,
+      textAlign: 'center',
+      lineHeight: 24,
+      marginBottom: 24,
     },
   });
 
@@ -907,7 +984,7 @@ const CompaniesScreen = ({ navigation }) => {
               styles.tabText,
               activeTab === 'companies' && styles.tabTextActive
             ]}>
-              🏢 Mes entreprises
+              Mes entreprises
             </Text>
           </TouchableOpacity>
           
@@ -920,7 +997,7 @@ const CompaniesScreen = ({ navigation }) => {
                 styles.tabText,
                 activeTab === 'invitations' && styles.tabTextActive
               ]}>
-                📨 Invitations
+                Invitations
               </Text>
               {invitations.length > 0 && (
                 <View style={styles.invitationBadge}>
@@ -980,8 +1057,11 @@ const CompaniesScreen = ({ navigation }) => {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-            <View style={styles.modalContent}>
+          <View style={styles.modalContent}>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ flexGrow: 1 }}
+            >
               <Text style={styles.modalTitle}>
                 {editingCompany ? 'Modifier l\'entreprise' : 'Ajouter une entreprise'}
               </Text>
@@ -1112,8 +1192,61 @@ const CompaniesScreen = ({ navigation }) => {
                   )}
                 </TouchableOpacity>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={confirmModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setConfirmModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{confirmAction?.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmAction?.message}</Text>
+            
+            <View style={styles.modalButtons}>
+              {confirmAction?.cancelText && (
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => setConfirmModalVisible(false)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>
+                    {confirmAction.cancelText}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity
+                style={[
+                  styles.modalButton, 
+                  confirmAction?.type === 'delete' || confirmAction?.type === 'leave' || confirmAction?.type === 'decline'
+                    ? styles.modalButtonDanger 
+                    : styles.modalButtonSave
+                ]}
+                onPress={confirmAction?.onConfirm}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color={theme.primaryContent} />
+                ) : (
+                  <Text style={[
+                    styles.modalButtonText, 
+                    confirmAction?.type === 'delete' || confirmAction?.type === 'leave' || confirmAction?.type === 'decline'
+                      ? styles.modalButtonTextDanger 
+                      : styles.modalButtonTextSave
+                  ]}>
+                    {confirmAction?.confirmText}
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
