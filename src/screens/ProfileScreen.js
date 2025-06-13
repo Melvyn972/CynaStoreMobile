@@ -34,6 +34,16 @@ const ProfileScreen = ({ navigation }) => {
     title: '',
   });
 
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    confirmText: '',
+    cancelText: 'Annuler',
+    onConfirm: null,
+    isDestructive: false,
+  });
+
   useEffect(() => {
     loadUserProfile();
   }, [authUser]);
@@ -55,54 +65,82 @@ const ProfileScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
-      Alert.alert('Erreur', 'Impossible de charger le profil utilisateur');
+      showAlert('Erreur', 'Impossible de charger le profil utilisateur');
     } finally {
       setLoading(false);
     }
   };
 
+  const showAlert = (title, message, buttons = [{ text: 'OK' }]) => {
+    // For simple alerts, use Alert if available, otherwise use custom modal
+    if (buttons.length === 1) {
+      if (typeof Alert !== 'undefined' && Alert.alert) {
+        Alert.alert(title, message, buttons);
+      } else {
+        // Fallback for web
+        alert(`${title}: ${message}`);
+      }
+    }
+  };
+
+  const showConfirm = (title, message, confirmText, onConfirm, isDestructive = false) => {
+    setConfirmModal({
+      visible: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Annuler',
+      onConfirm,
+      isDestructive,
+    });
+  };
+
+  const hideConfirm = () => {
+    setConfirmModal({
+      visible: false,
+      title: '',
+      message: '',
+      confirmText: '',
+      cancelText: 'Annuler',
+      onConfirm: null,
+      isDestructive: false,
+    });
+  };
+
   const handleLogout = () => {
-    Alert.alert(
+    showConfirm(
       'Déconnexion',
       'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Se déconnecter', 
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            navigation.navigate('Login');
-          }
-        }
-      ]
+      'Se déconnecter',
+      () => {
+        logout();
+        navigation.navigate('Login');
+        hideConfirm();
+      },
+      true
     );
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showConfirm(
       'Supprimer le compte',
       'Cette action est irréversible. Toutes vos données seront supprimées définitivement.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Supprimer', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setUpdating(true);
-              await userService.deleteAccount();
-              Alert.alert('Compte supprimé', 'Votre compte a été supprimé avec succès.');
-              logout();
-              navigation.navigate('Login');
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer le compte');
-            } finally {
-              setUpdating(false);
-            }
-          }
+      'Supprimer',
+      async () => {
+        try {
+          setUpdating(true);
+          hideConfirm();
+          await userService.deleteAccount();
+          showAlert('Compte supprimé', 'Votre compte a été supprimé avec succès.');
+          logout();
+          navigation.navigate('Login');
+        } catch (error) {
+          showAlert('Erreur', 'Impossible de supprimer le compte');
+        } finally {
+          setUpdating(false);
         }
-      ]
+      },
+      true
     );
   };
 
@@ -150,10 +188,10 @@ const ProfileScreen = ({ navigation }) => {
       await refreshUser();
       
       setEditModal({ visible: false, field: '', value: '', title: '' });
-      Alert.alert('Succès', 'Vos informations ont été mises à jour.');
+      showAlert('Succès', 'Vos informations ont été mises à jour.');
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Erreur', 'Impossible de mettre à jour le profil');
+      showAlert('Erreur', 'Impossible de mettre à jour le profil');
     } finally {
       setUpdating(false);
     }
@@ -231,7 +269,6 @@ const ProfileScreen = ({ navigation }) => {
     {
       section: 'Compte',
       items: [
-        { icon: 'card-outline', title: 'Méthodes de paiement', onPress: () => navigation.navigate('PaymentMethods') },
         { icon: 'receipt-outline', title: 'Historique des commandes', onPress: () => navigation.navigate('Orders') },
         { icon: 'business-outline', title: 'Mes entreprises', onPress: () => navigation.navigate('Companies') },
       ]
@@ -410,6 +447,49 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={confirmModal.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={hideConfirm}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{confirmModal.title}</Text>
+            <Text style={styles.confirmMessage}>{confirmModal.message}</Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={hideConfirm}
+                disabled={updating}
+              >
+                <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>
+                  {confirmModal.cancelText}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modalButton, 
+                  confirmModal.isDestructive ? styles.modalButtonDanger : styles.modalButtonSave
+                ]}
+                onPress={confirmModal.onConfirm}
+                disabled={updating}
+              >
+                <Text style={[
+                  styles.modalButtonText, 
+                  confirmModal.isDestructive ? styles.modalButtonTextDanger : styles.modalButtonSave
+                ]}>
+                  {confirmModal.confirmText}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -575,6 +655,13 @@ const createStyles = (theme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.neutral,
   },
+  confirmMessage: {
+    fontSize: 16,
+    color: theme.baseContent,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -594,6 +681,9 @@ const createStyles = (theme) => StyleSheet.create({
   modalButtonSave: {
     backgroundColor: theme.primary,
   },
+  modalButtonDanger: {
+    backgroundColor: theme.error,
+  },
   modalButtonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -601,8 +691,8 @@ const createStyles = (theme) => StyleSheet.create({
   modalButtonTextCancel: {
     color: theme.baseContent,
   },
-  modalButtonTextSave: {
-    color: theme.primaryContent,
+  modalButtonTextDanger: {
+    color: theme.base100,
   },
   dangerSection: {
     marginTop: 32,

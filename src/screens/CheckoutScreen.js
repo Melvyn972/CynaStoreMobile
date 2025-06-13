@@ -107,14 +107,25 @@ const CheckoutScreen = ({ navigation, route }) => {
 
     setIsProcessing(true);
     try {
+      console.log('Cart items for checkout:', cartItems);
+      
       let checkoutResponse;
+      
+      // Prepare checkout options with URLs
+      const checkoutOptions = {
+        successUrl: 'cynastore://checkout/success',
+        cancelUrl: 'cynastore://checkout/cancel',
+        metadata: {
+          source: 'mobile_app',
+        },
+      };
       
       if (companyId) {
         // Company checkout
-        checkoutResponse = await paymentService.createCompanyCheckout(companyId);
+        checkoutResponse = await paymentService.createCompanyCheckout(companyId, cartItems, checkoutOptions);
       } else {
         // Regular cart checkout
-        checkoutResponse = await paymentService.createCartCheckout();
+        checkoutResponse = await paymentService.createCartCheckout(cartItems, checkoutOptions);
       }
 
       if (checkoutResponse.url) {

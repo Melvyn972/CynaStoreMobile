@@ -48,9 +48,18 @@ export const userService = {
     }
   },
 
+  getConsent: async () => {
+    try {
+      const response = await apiClient.get('/user/consent');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
   updateConsent: async (consentData) => {
     try {
-      const response = await apiClient.post('/user/consent', consentData);
+      const response = await apiClient.put('/user/consent', consentData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

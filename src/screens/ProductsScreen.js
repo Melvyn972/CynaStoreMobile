@@ -32,6 +32,7 @@ const ProductsScreen = ({ navigation }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [addingToCart, setAddingToCart] = useState({}); // Track loading state for each product
 
   const categories = [
     { id: 'all', name: 'Tous', icon: 'grid-outline' },
@@ -155,19 +156,32 @@ const ProductsScreen = ({ navigation }) => {
       return;
     }
 
+    // Set loading state for this specific product
+    setAddingToCart(prev => ({ ...prev, [product.id]: true }));
+
     try {
       await cartService.addToCart(product.id, 1);
-      Alert.alert(
-        'Ajouté au panier',
-        `${product.title} a été ajouté à votre panier.`,
-        [
-          { text: 'Continuer', style: 'cancel' },
-          { text: 'Voir le panier', onPress: () => navigation.navigate('Cart') }
-        ]
-      );
+      
+      // Show success feedback with a short delay to show the loading state
+      setTimeout(() => {
+        Alert.alert(
+          '✅ Ajouté au panier',
+          `${product.title} a été ajouté à votre panier.`,
+          [
+            { text: 'Continuer les achats', style: 'cancel' },
+            { text: 'Voir le panier', onPress: () => navigation.navigate('Cart') }
+          ]
+        );
+      }, 300);
+      
     } catch (error) {
       console.error('Error adding to cart:', error);
-      Alert.alert('Erreur', 'Impossible d\'ajouter l\'article au panier');
+      Alert.alert('Erreur', 'Impossible d\'ajouter l\'article au panier. Veuillez réessayer.');
+    } finally {
+      // Remove loading state for this product
+      setTimeout(() => {
+        setAddingToCart(prev => ({ ...prev, [product.id]: false }));
+      }, 300);
     }
   };
 
@@ -181,36 +195,48 @@ const ProductsScreen = ({ navigation }) => {
     loadProducts(1, true);
   };
 
-  const renderProduct = ({ item }) => (
-    <TouchableOpacity
-      style={styles.productCard}
-      onPress={() => navigation.navigate('ProductDetail', { product: item })}
-      activeOpacity={0.9}
-    >
-      <Image 
-                  source={{ uri: item.image || 'https://picsum.photos/300/200' }} 
-        style={styles.productImage} 
-        resizeMode="cover" 
-      />
-      
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.title}</Text>
-        <Text style={styles.productDescription} numberOfLines={2}>
-          {item.description || 'Aucune description disponible'}
-        </Text>
+  const renderProduct = ({ item }) => {
+    const isLoadingThisItem = addingToCart[item.id];
+    
+    return (
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => navigation.navigate('ProductDetail', { product: item })}
+        activeOpacity={0.9}
+      >
+        <Image 
+          source={{ uri: item.image || 'https://picsum.photos/300/200' }} 
+          style={styles.productImage} 
+          resizeMode="cover" 
+        />
         
-        <View style={styles.productFooter}>
-          <Text style={styles.productPrice}>{item.price?.toFixed(2) || '0.00'} €</Text>
-          <TouchableOpacity 
-            style={styles.addToCartButton}
-            onPress={() => addToCart(item)}
-          >
-            <Ionicons name="cart-outline" size={16} color={theme.primaryContent} />
-          </TouchableOpacity>
+        <View style={styles.productInfo}>
+          <Text style={styles.productName}>{item.title}</Text>
+          <Text style={styles.productDescription} numberOfLines={2}>
+            {item.description || 'Aucune description disponible'}
+          </Text>
+          
+          <View style={styles.productFooter}>
+            <Text style={styles.productPrice}>{item.price?.toFixed(2) || '0.00'} €</Text>
+            <TouchableOpacity 
+              style={[
+                styles.addToCartButton,
+                isLoadingThisItem && styles.addToCartButtonLoading
+              ]}
+              onPress={() => addToCart(item)}
+              disabled={isLoadingThisItem}
+            >
+              {isLoadingThisItem ? (
+                <ActivityIndicator size={16} color={theme.primaryContent} />
+              ) : (
+                <Ionicons name="cart-outline" size={16} color={theme.primaryContent} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderCategory = ({ item }) => (
     <TouchableOpacity
@@ -409,6 +435,13 @@ const ProductsScreen = ({ navigation }) => {
       backgroundColor: theme.primary,
       borderRadius: 8,
       padding: 8,
+      minWidth: 32,
+      minHeight: 32,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    addToCartButtonLoading: {
+      opacity: 0.7,
     },
     footerLoader: {
       paddingVertical: 20,

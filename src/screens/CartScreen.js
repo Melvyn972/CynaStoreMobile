@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { cartService, companyService } from '../services';
@@ -24,16 +25,25 @@ const CartScreen = ({ navigation }) => {
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  // Fetch cart items
+  // Fetch cart items on initial load
   useEffect(() => {
     if (isAuthenticated) {
-      fetchCart();
       fetchCompanies();
     } else {
-      setLoading(false);
       setLoadingCompanies(false);
     }
   }, [isAuthenticated]);
+
+  // Refresh cart whenever the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) {
+        fetchCart();
+      } else {
+        setLoading(false);
+      }
+    }, [isAuthenticated])
+  );
 
   const fetchCart = async () => {
     try {
@@ -85,58 +95,32 @@ const CartScreen = ({ navigation }) => {
     }
   };
 
-  const removeFromCart = (cartItemId) => {
-    Alert.alert(
-      'Supprimer l\'article',
-      'Êtes-vous sûr de vouloir supprimer cet article du panier ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Supprimer', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setUpdating(true);
-              await cartService.removeFromCart(cartItemId);
-              
-              // Update local state
-              setCartItems(prevItems => prevItems.filter(item => item.id !== cartItemId));
-            } catch (error) {
-              console.error('Error removing from cart:', error);
-              Alert.alert('Erreur', 'Impossible de supprimer l\'article');
-            } finally {
-              setUpdating(false);
-            }
-          }
-        },
-      ]
-    );
+  const removeFromCart = async (cartItemId) => {
+    try {
+      setUpdating(true);
+      await cartService.removeFromCart(cartItemId);
+      
+      // Update local state
+      setCartItems(prevItems => prevItems.filter(item => item.id !== cartItemId));
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      Alert.alert('Erreur', 'Impossible de supprimer l\'article');
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const clearCart = () => {
-    Alert.alert(
-      'Vider le panier',
-      'Êtes-vous sûr de vouloir vider votre panier ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Vider', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setUpdating(true);
-              await cartService.clearCart();
-              setCartItems([]);
-            } catch (error) {
-              console.error('Error clearing cart:', error);
-              Alert.alert('Erreur', 'Impossible de vider le panier');
-            } finally {
-              setUpdating(false);
-            }
-          }
-        },
-      ]
-    );
+  const clearCart = async () => {
+    try {
+      setUpdating(true);
+      await cartService.clearCart();
+      setCartItems([]);
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      Alert.alert('Erreur', 'Impossible de vider le panier');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   // Calculate total
@@ -445,7 +429,13 @@ const CartScreen = ({ navigation }) => {
       textAlign: 'center',
     },
     removeButton: {
-      padding: 8,
+      padding: 12,
+      borderRadius: 8,
+      backgroundColor: theme.error + '20',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minWidth: 44,
+      minHeight: 44,
     },
     summary: {
       position: 'absolute',

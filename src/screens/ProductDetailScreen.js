@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,14 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { cartService } from '../services';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +29,40 @@ const features = [
 const ProductDetailScreen = ({ route, navigation }) => {
   const { product } = route.params;
   const { theme, mode } = useTheme();
+  const { isAuthenticated } = useAuth();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+  const addToCart = async () => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Connexion requise',
+        'Vous devez être connecté pour ajouter des articles au panier.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Se connecter', onPress: () => navigation.navigate('Login') }
+        ]
+      );
+      return;
+    }
+
+    setIsAddingToCart(true);
+    try {
+      await cartService.addToCart(product.id, 1);
+      Alert.alert(
+        '✅ Ajouté au panier',
+        `${product.title || product.name} a été ajouté à votre panier.`,
+        [
+          { text: 'Continuer les achats', style: 'cancel' },
+          { text: 'Voir le panier', onPress: () => navigation.navigate('Cart') }
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      Alert.alert('Erreur', 'Impossible d\'ajouter l\'article au panier. Veuillez réessayer.');
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
   const styles = StyleSheet.create({
     imageContainer: {
@@ -120,6 +158,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
       paddingVertical: 16,
       paddingHorizontal: 32,
       justifyContent: 'center',
+      opacity: isAddingToCart ? 0.7 : 1,
     },
     addToCartText: {
       color: theme.primaryContent,
@@ -134,7 +173,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         {/* Product Image */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: product.image }}
+            source={{ uri: product.image || 'https://picsum.photos/400/300' }}
             style={styles.productImage}
             resizeMode="cover"
           />
@@ -152,9 +191,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
         </View>
         {/* Product Info */}
         <View style={styles.infoContainer}>
-          <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.price}>€{product.price.toFixed(2)}</Text>
-          <Text style={styles.desc}>{product.description}</Text>
+          <Text style={styles.name}>{product.title || product.name}</Text>
+          <Text style={styles.price}>€{(product.price || 0).toFixed(2)}</Text>
+          <Text style={styles.desc}>{product.description || 'Aucune description disponible'}</Text>
           {/* Features */}
           <View style={styles.featuresRow}>
             {features.map((f, i) => (
@@ -171,9 +210,19 @@ const ProductDetailScreen = ({ route, navigation }) => {
           </View>
           {/* Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.addToCartBtn}>
-              <Ionicons name="cart-outline" size={20} color={theme.secondaryContent} style={{ marginRight: 8 }} />
-              <Text style={styles.addToCartText}>Ajouter au panier</Text>
+            <TouchableOpacity 
+              style={styles.addToCartBtn}
+              onPress={addToCart}
+              disabled={isAddingToCart}
+            >
+              {isAddingToCart ? (
+                <ActivityIndicator size="small" color={theme.primaryContent} />
+              ) : (
+                <Ionicons name="cart-outline" size={20} color={theme.primaryContent} style={{ marginRight: 8 }} />
+              )}
+              <Text style={styles.addToCartText}>
+                {isAddingToCart ? 'Ajout en cours...' : 'Ajouter au panier'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -181,7 +230,5 @@ const ProductDetailScreen = ({ route, navigation }) => {
     </View>
   );
 };
-
-
 
 export default ProductDetailScreen; 
