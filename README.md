@@ -1,134 +1,238 @@
-# Application Mobile CynaStore
-Une application mobile React Native construite avec Expo qui se connecte à l'API web de CynaStore.
+# 📱 CynaStore Mobile
 
-## Fonctionnalités
-- **Authentification** : Connexion utilisateur, inscription et authentification sécurisée basée sur des tokens
-- **Navigation d'Articles** : Visualiser et rechercher des articles depuis l'application web
-- **Panier d'Achat** : Ajouter des articles au panier, gérer les quantités et procéder au checkout
-- **Profil Utilisateur** : Gérer le compte utilisateur et les paramètres
-- **Interface Moderne** : Design propre et responsive avec navigation native
+Application mobile React Native moderne pour la plateforme e-commerce CynaStore, offrant une expérience utilisateur fluide et intuitive.
 
-## Prérequis
-- Node.js (v16 ou supérieur)
-- npm ou yarn
-- Expo CLI : `npm install -g @expo/cli`
-- Simulateur iOS (pour le développement iOS) ou Android Studio (pour le développement Android)
+## 🚀 Fonctionnalités Principales
 
-## Installation
-1. Naviguer vers le répertoire de l'application mobile :
+### 🔐 Authentification Sécurisée
+- Connexion et inscription utilisateur
+- Authentification par tokens JWT
+- Gestion automatique de la session
+- Récupération de mot de passe
+
+### 🛍️ Expérience d'Achat Complète
+- **Catalogue de produits** : Navigation intuitive avec filtres et recherche
+- **Panier intelligent** : Gestion des quantités et sauvegarde automatique
+- **Processus de commande** : Checkout sécurisé avec validation
+- **Suivi des commandes** : Historique détaillé des achats
+
+### 👤 Gestion de Profil
+- Profil utilisateur personnalisable
+- Historique des commandes
+- Paramètres de confidentialité RGPD
+- Préférences de notification
+
+### 🏢 Informations Entreprises
+- Annuaire des entreprises partenaires
+- Détails et coordonnées
+- Articles et actualités
+
+## 🛠️ Technologies Utilisées
+
+- **React Native** avec Expo
+- **React Navigation** pour la navigation
+- **Axios** pour les appels API
+- **AsyncStorage** pour le stockage local
+- **React Context** pour la gestion d'état
+- **Expo Router** pour la navigation moderne
+
+## 📋 Prérequis
+
+- **Node.js** (version 18 ou supérieure)
+- **npm** ou **yarn**
+- **Expo CLI** : `npm install -g @expo/cli`
+- **Git**
+
+### 📱 Pour le développement mobile
+- **iOS** : Xcode et simulateur iOS (macOS uniquement)
+- **Android** : Android Studio et émulateur Android
+- **Appareil physique** : Application Expo Go
+
+## ⚡ Installation Rapide
+
+1. **Cloner le dépôt**
    ```bash
+   git clone [URL_DU_REPO]
    cd CynaStoreMobile
    ```
-2. Installer les dépendances :
+
+2. **Installer les dépendances**
    ```bash
    npm install
+   # ou
+   yarn install
    ```
-3. Configurer l'URL de l'API dans `.env` :
-   ```
+
+3. **Configuration de l'environnement**
+   ```bash
+   # Copier le fichier d'exemple
+   cp .env.example .env
+   
+   # Éditer les variables d'environnement
    API_URL=http://localhost:3000/api
    NEXTAUTH_URL=http://localhost:3000
    ```
 
-## Lancement de l'Application
-### Mode Développement
-Démarrer le serveur de développement Expo :
+4. **Lancer l'application**
+   ```bash
+   npm start
+   # ou
+   yarn start
+   ```
+
+## 🎯 Commandes de Développement
+
+### Lancement par Plateforme
 ```bash
+# iOS (macOS uniquement)
+npm run ios
+
+# Android
+npm run android
+
+# Web
+npm run web
+
+# Toutes les plateformes
 npm start
 ```
 
-### Commandes Spécifiques par Plateforme
-Pour iOS :
+### Build de Production
 ```bash
-npm run ios
+# Build pour iOS
+npm run build:ios
+
+# Build pour Android
+npm run build:android
+
+# Build pour EAS
+eas build --platform all
 ```
 
-Pour Android :
-```bash
-npm run android
-```
+## 📁 Architecture du Projet
 
-Pour Web :
-```bash
-npm run web
-```
-
-## Structure du Projet
 ```
 src/
-├── config/          # Configuration de l'API
-├── context/         # Fournisseurs de React Context
-├── navigation/      # Configuration de la navigation
-├── screens/         # Composants d'écran
-├── services/        # Fonctions de service API
-└── utils/          # Fonctions utilitaires
+├── components/          # Composants réutilisables
+│   ├── AuthModal.js    # Modal d'authentification
+│   ├── BackgroundEffects.js
+│   └── ThemeToggle.js  # Basculement de thème
+├── config/             # Configuration
+│   ├── api.js         # Configuration API
+│   └── constants.js   # Constantes globales
+├── context/           # Contextes React
+│   ├── AuthContext.js # Gestion authentification
+│   └── ThemeContext.js # Gestion thème
+├── navigation/        # Navigation
+│   └── AppNavigator.js
+├── screens/          # Écrans de l'application
+│   ├── auth/         # Écrans d'authentification
+│   ├── shop/         # Écrans boutique
+│   ├── profile/      # Écrans profil
+│   └── ...
+├── services/         # Services API
+│   ├── authService.js
+│   ├── cartService.js
+│   ├── userService.js
+│   └── ...
+└── utils/           # Utilitaires
+    ├── auth.js
+    ├── clipboardService.js
+    └── useDeepLinking.js
 ```
 
-## Intégration API
-L'application mobile se connecte aux endpoints de l'API de l'application web :
-- **Authentification** : `/api/auth/*`
-- **Articles** : `/api/articles/*`
-- **Panier** : `/api/cart/*`
-- **Utilisateur** : `/api/user/*`
+## 🔌 Intégration API
 
-## Composants Clés
-### Authentification
-- Écrans de connexion/inscription avec validation
-- Stockage sécurisé de tokens utilisant AsyncStorage
-- Actualisation automatique des tokens et déconnexion à l'expiration
+L'application se connecte à l'API CynaStore via les endpoints suivants :
 
-### Navigation
-- Navigation par onglets pour les écrans principaux
-- Navigation en pile pour les vues détaillées
-- Gestion du flux d'authentification
+| Service | Endpoint | Description |
+|---------|----------|-------------|
+| **Authentification** | `/api/auth/*` | Connexion, inscription, tokens |
+| **Articles** | `/api/articles/*` | Catalogue et détails produits |
+| **Panier** | `/api/cart/*` | Gestion panier et commandes |
+| **Utilisateur** | `/api/user/*` | Profil et paramètres |
+| **Entreprises** | `/api/companies/*` | Annuaire entreprises |
 
-### Gestion des Données
-- Client HTTP basé sur Axios avec intercepteurs
-- React Context pour la gestion d'état globale
-- Stockage asynchrone pour les données persistantes
+## ⚙️ Configuration
 
-## Configuration
 ### Variables d'Environnement
-Créer un fichier `.env` dans le répertoire racine :
+
+Créer un fichier `.env` à la racine :
+
 ```env
-API_URL=http://votre-url-api/api
-NEXTAUTH_URL=http://votre-url-application-web
+# API Configuration
+API_URL=http://localhost:3000/api
+NEXTAUTH_URL=http://localhost:3000
+
+# Configuration Expo
+EXPO_PUBLIC_API_URL=http://localhost:3000/api
 ```
-
-### Configuration URL API
-Pour le développement, assurez-vous que votre application web fonctionne et est accessible. La configuration par défaut suppose :
-- Application web fonctionnant sur `http://localhost:3000`
-- API accessible à `http://localhost:3000/api`
-
-## Build pour la Production
-### Build pour iOS
-```bash
-npm run build:ios
-```
-
-### Build pour Android
-```bash
-npm run build:android
-```
-
-## Dépannage
-### Problèmes Courants
-1. **Problèmes du bundler Metro** : Vider le cache avec `npm start -- --clear`
-2. **Problèmes du simulateur iOS** : Réinitialiser le simulateur ou redémarrer Xcode
-3. **Problèmes Android** : S'assurer qu'Android Studio et l'émulateur sont correctement configurés
-4. **Problèmes de connexion API** : Vérifier la configuration réseau et l'URL de l'API
 
 ### Configuration Réseau
-Pour tester sur des appareils physiques, mettre à jour l'API_URL pour utiliser l'adresse IP de votre ordinateur au lieu de localhost :
+
+Pour tester sur appareil physique, utiliser l'IP locale :
 ```env
 API_URL=http://192.168.1.100:3000/api
 ```
 
-## Contribution
-1. Forker le dépôt
-2. Créer une branche de fonctionnalité
-3. Apporter vos modifications
-4. Tester minutieusement
-5. Soumettre une pull request
+## 🐛 Dépannage
 
-## Licence
-Ce projet est sous licence MIT.
+### Problèmes Courants
+
+| Problème | Solution |
+|----------|----------|
+| **Erreur Metro** | `npm start -- --clear` |
+| **Simulateur iOS bloqué** | Redémarrer Xcode |
+| **Émulateur Android lent** | Augmenter la RAM dans AVD |
+| **Connexion API échoue** | Vérifier l'URL et le réseau |
+
+### Commandes de Nettoyage
+```bash
+# Vider le cache Metro
+npx expo start --clear
+
+# Réinstaller les dépendances
+rm -rf node_modules && npm install
+
+# Réinitialiser Expo
+npx expo install --fix
+```
+
+## 📱 Fonctionnalités Avancées
+
+### 🔄 Deep Linking
+- Navigation directe vers produits
+- Partage de liens d'articles
+- Intégration avec les réseaux sociaux
+
+### 🎨 Thème Dynamique
+- Mode clair/sombre automatique
+- Personnalisation des couleurs
+- Adaptation au système
+
+### 📊 Analytics
+- Suivi des interactions utilisateur
+- Métriques de performance
+- Rapports d'utilisation
+
+## 🤝 Contribution
+
+1. **Forker** le projet
+2. **Créer** une branche feature (`git checkout -b feature/AmazingFeature`)
+3. **Commiter** les changements (`git commit -m 'Add AmazingFeature'`)
+4. **Pousser** vers la branche (`git push origin feature/AmazingFeature`)
+5. **Ouvrir** une Pull Request
+
+### Standards de Code
+- Utiliser ESLint et Prettier
+- Suivre les conventions React Native
+- Ajouter des tests pour les nouvelles fonctionnalités
+- Documenter les changements importants
+
+## 📄 Licence
+
+Ce projet est sous licence **MIT**.
+
+---
+
+**Développé avec ❤️ par l'équipe CynaStore**
