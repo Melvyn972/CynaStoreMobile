@@ -772,13 +772,13 @@ const CompanyDetailScreen = ({ navigation, route }) => {
         <View key={member.id} style={styles.memberItem}>
           <View style={styles.memberAvatar}>
             <Text style={styles.memberAvatarText}>
-              {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+              {member.name ? member.name.split(' ').filter(n => n.length > 0).map(n => n[0]).join('').toUpperCase() || '?' : '?'}
             </Text>
           </View>
           
           <View style={styles.memberInfo}>
-            <Text style={styles.memberName}>{member.name}</Text>
-            <Text style={styles.memberEmail}>{member.email}</Text>
+            <Text style={styles.memberName}>{member.name || 'Nom non disponible'}</Text>
+            <Text style={styles.memberEmail}>{member.email || 'Email non disponible'}</Text>
             <Text style={styles.memberRole}>
               {getRoleText(member.role)}
             </Text>
