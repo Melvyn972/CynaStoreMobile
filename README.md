@@ -1,155 +1,134 @@
-# CynaStore Mobile App
+# Application Mobile CynaStore
+Une application mobile React Native construite avec Expo qui se connecte à l'API web de CynaStore.
 
-A React Native mobile application built with Expo that connects to the CynaStore web API.
+## Fonctionnalités
+- **Authentification** : Connexion utilisateur, inscription et authentification sécurisée basée sur des tokens
+- **Navigation d'Articles** : Visualiser et rechercher des articles depuis l'application web
+- **Panier d'Achat** : Ajouter des articles au panier, gérer les quantités et procéder au checkout
+- **Profil Utilisateur** : Gérer le compte utilisateur et les paramètres
+- **Interface Moderne** : Design propre et responsive avec navigation native
 
-## Features
-
-- **Authentication**: User login, registration, and secure token-based authentication
-- **Article Browsing**: View and search articles from the web app
-- **Shopping Cart**: Add items to cart, manage quantities, and checkout
-- **User Profile**: Manage user account and settings
-- **Modern UI**: Clean, responsive design with native navigation
-
-## Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
-- Expo CLI: `npm install -g @expo/cli`
-- iOS Simulator (for iOS development) or Android Studio (for Android development)
+## Prérequis
+- Node.js (v16 ou supérieur)
+- npm ou yarn
+- Expo CLI : `npm install -g @expo/cli`
+- Simulateur iOS (pour le développement iOS) ou Android Studio (pour le développement Android)
 
 ## Installation
-
-1. Navigate to the mobile app directory:
+1. Naviguer vers le répertoire de l'application mobile :
    ```bash
    cd CynaStoreMobile
    ```
-
-2. Install dependencies:
+2. Installer les dépendances :
    ```bash
    npm install
    ```
-
-3. Configure the API URL in `.env`:
+3. Configurer l'URL de l'API dans `.env` :
    ```
    API_URL=http://localhost:3000/api
    NEXTAUTH_URL=http://localhost:3000
    ```
 
-## Running the App
-
-### Development Mode
-
-Start the Expo development server:
+## Lancement de l'Application
+### Mode Développement
+Démarrer le serveur de développement Expo :
 ```bash
 npm start
 ```
 
-### Platform-Specific Commands
-
-For iOS:
+### Commandes Spécifiques par Plateforme
+Pour iOS :
 ```bash
 npm run ios
 ```
 
-For Android:
+Pour Android :
 ```bash
 npm run android
 ```
 
-For Web:
+Pour Web :
 ```bash
 npm run web
 ```
 
-## Project Structure
-
+## Structure du Projet
 ```
 src/
-├── config/          # API configuration
-├── context/         # React Context providers
-├── navigation/      # Navigation configuration
-├── screens/         # Screen components
-├── services/        # API service functions
-└── utils/          # Utility functions
+├── config/          # Configuration de l'API
+├── context/         # Fournisseurs de React Context
+├── navigation/      # Configuration de la navigation
+├── screens/         # Composants d'écran
+├── services/        # Fonctions de service API
+└── utils/          # Fonctions utilitaires
 ```
 
-## API Integration
+## Intégration API
+L'application mobile se connecte aux endpoints de l'API de l'application web :
+- **Authentification** : `/api/auth/*`
+- **Articles** : `/api/articles/*`
+- **Panier** : `/api/cart/*`
+- **Utilisateur** : `/api/user/*`
 
-The mobile app connects to the web app's API endpoints:
-
-- **Authentication**: `/api/auth/*`
-- **Articles**: `/api/articles/*`
-- **Cart**: `/api/cart/*`
-- **User**: `/api/user/*`
-
-## Key Components
-
-### Authentication
-- Login/Register screens with validation
-- Secure token storage using AsyncStorage
-- Automatic token refresh and logout on expiry
+## Composants Clés
+### Authentification
+- Écrans de connexion/inscription avec validation
+- Stockage sécurisé de tokens utilisant AsyncStorage
+- Actualisation automatique des tokens et déconnexion à l'expiration
 
 ### Navigation
-- Tab-based navigation for main screens
-- Stack navigation for detailed views
-- Authentication flow handling
+- Navigation par onglets pour les écrans principaux
+- Navigation en pile pour les vues détaillées
+- Gestion du flux d'authentification
 
-### Data Management
-- Axios-based HTTP client with interceptors
-- React Context for global state management
-- Async storage for persistent data
+### Gestion des Données
+- Client HTTP basé sur Axios avec intercepteurs
+- React Context pour la gestion d'état globale
+- Stockage asynchrone pour les données persistantes
 
 ## Configuration
-
-### Environment Variables
-Create a `.env` file in the root directory:
-
+### Variables d'Environnement
+Créer un fichier `.env` dans le répertoire racine :
 ```env
-API_URL=http://your-api-url/api
-NEXTAUTH_URL=http://your-web-app-url
+API_URL=http://votre-url-api/api
+NEXTAUTH_URL=http://votre-url-application-web
 ```
 
-### API URL Configuration
-For development, ensure your web app is running and accessible. The default configuration assumes:
-- Web app running on `http://localhost:3000`
-- API accessible at `http://localhost:3000/api`
+### Configuration URL API
+Pour le développement, assurez-vous que votre application web fonctionne et est accessible. La configuration par défaut suppose :
+- Application web fonctionnant sur `http://localhost:3000`
+- API accessible à `http://localhost:3000/api`
 
-## Building for Production
-
-### Build for iOS
+## Build pour la Production
+### Build pour iOS
 ```bash
 npm run build:ios
 ```
 
-### Build for Android
+### Build pour Android
 ```bash
 npm run build:android
 ```
 
-## Troubleshooting
+## Dépannage
+### Problèmes Courants
+1. **Problèmes du bundler Metro** : Vider le cache avec `npm start -- --clear`
+2. **Problèmes du simulateur iOS** : Réinitialiser le simulateur ou redémarrer Xcode
+3. **Problèmes Android** : S'assurer qu'Android Studio et l'émulateur sont correctement configurés
+4. **Problèmes de connexion API** : Vérifier la configuration réseau et l'URL de l'API
 
-### Common Issues
-
-1. **Metro bundler issues**: Clear cache with `npm start -- --clear`
-2. **iOS simulator issues**: Reset simulator or restart Xcode
-3. **Android issues**: Ensure Android Studio and emulator are properly configured
-4. **API connection issues**: Check network configuration and API URL
-
-### Network Configuration
-
-For testing on physical devices, update the API_URL to use your computer's IP address instead of localhost:
+### Configuration Réseau
+Pour tester sur des appareils physiques, mettre à jour l'API_URL pour utiliser l'adresse IP de votre ordinateur au lieu de localhost :
 ```env
 API_URL=http://192.168.1.100:3000/api
 ```
 
-## Contributing
+## Contribution
+1. Forker le dépôt
+2. Créer une branche de fonctionnalité
+3. Apporter vos modifications
+4. Tester minutieusement
+5. Soumettre une pull request
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License. 
+## Licence
+Ce projet est sous licence MIT.
