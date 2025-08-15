@@ -19,11 +19,9 @@ export const userService = {
     }
   },
 
-  getUserOrders: async (page = 1, limit = 10) => {
+  getUserOrders: async () => {
     try {
-      const response = await apiClient.get('/user/orders', {
-        params: { page, limit },
-      });
+      const response = await apiClient.get('/user/orders');
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

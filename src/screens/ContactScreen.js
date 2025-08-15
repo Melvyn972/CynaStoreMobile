@@ -12,15 +12,17 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { contactService } from '../services';
 
 const ContactScreen = ({ navigation }) => {
   const { theme, mode } = useTheme();
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
+    subject: '',
     message: '',
   });
+  const [sending, setSending] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -29,29 +31,42 @@ const ContactScreen = ({ navigation }) => {
     }));
   };
 
-  const handleSubmit = () => {
-    if (!formData.firstName || !formData.lastName || !formData.email) {
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.email || !formData.message) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
       return;
     }
 
-    Alert.alert(
-      'Message envoyé !',
-      'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setFormData({
-              firstName: '',
-              lastName: '',
-              email: '',
-              message: '',
-            });
+    try {
+      setSending(true);
+      await contactService.sendContactMessage(formData);
+      
+      Alert.alert(
+        'Message envoyé !',
+        'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setFormData({
+                name: '',
+                email: '',
+                subject: '',
+                message: '',
+              });
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    } catch (error) {
+      console.error('Error sending contact message:', error);
+      Alert.alert(
+        'Erreur',
+        error.message || 'Une erreur est survenue lors de l\'envoi du message. Veuillez réessayer.'
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   const styles = StyleSheet.create({
@@ -242,27 +257,25 @@ const ContactScreen = ({ navigation }) => {
               
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>
-                  Prénom <Text style={styles.requiredStar}>*</Text>
+                  Nom complet <Text style={styles.requiredStar}>*</Text>
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Votre prénom"
+                  placeholder="Votre nom complet"
                   placeholderTextColor={theme.neutralContent}
-                  value={formData.firstName}
-                  onChangeText={(value) => handleInputChange('firstName', value)}
+                  value={formData.name}
+                  onChangeText={(value) => handleInputChange('name', value)}
                 />
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>
-                  Nom <Text style={styles.requiredStar}>*</Text>
-                </Text>
+                <Text style={styles.inputLabel}>Sujet</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Votre nom"
+                  placeholder="Sujet de votre message"
                   placeholderTextColor={theme.neutralContent}
-                  value={formData.lastName}
-                  onChangeText={(value) => handleInputChange('lastName', value)}
+                  value={formData.subject}
+                  onChangeText={(value) => handleInputChange('subject', value)}
                 />
               </View>
 
@@ -282,7 +295,9 @@ const ContactScreen = ({ navigation }) => {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Message</Text>
+                <Text style={styles.inputLabel}>
+                  Message <Text style={styles.requiredStar}>*</Text>
+                </Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   placeholder="Votre message..."
@@ -295,10 +310,13 @@ const ContactScreen = ({ navigation }) => {
               </View>
 
               <TouchableOpacity 
-                style={styles.submitButton}
+                style={[styles.submitButton, sending && { opacity: 0.6 }]}
                 onPress={handleSubmit}
+                disabled={sending}
               >
-                <Text style={styles.submitButtonText}>Envoyer</Text>
+                <Text style={styles.submitButtonText}>
+                  {sending ? 'Envoi en cours...' : 'Envoyer'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

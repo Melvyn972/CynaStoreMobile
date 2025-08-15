@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   // Base URL for the backend API - uses production server by default
-  BASE_URL: process.env.API_URL || (__DEV__ ? 'https://cyna.impin.fr/api' : 'https://cyna.impin.fr/api'),
+  BASE_URL: process.env.API_URL || (__DEV__ ? 'https://cyna-store-web.vercel.app/api' : 'https://cyna-store-web.vercel.app/api'),
   
   // Timeout for API requests (in milliseconds) - increased for mobile
   TIMEOUT: 15000,

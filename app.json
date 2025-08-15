@@ -19,7 +19,7 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false,
           "NSExceptionDomains": {
-            "cyna.impin.fr": {
+            "cyna-store-web.vercel.app": {
               "NSExceptionRequiresForwardSecrecy": false,
               "NSExceptionMinimumTLSVersion": "1.0",
               "NSIncludesSubdomains": true

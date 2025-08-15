@@ -1,11 +1,9 @@
 import { apiClient } from '../config/api';
 
 export const companyService = {
-  getCompanies: async (page = 1, limit = 10) => {
+  getCompanies: async () => {
     try {
-      const response = await apiClient.get('/companies', {
-        params: { page, limit },
-      });
+      const response = await apiClient.get('/companies');
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -41,7 +39,9 @@ export const companyService = {
 
   deleteCompany: async (companyId) => {
     try {
-      const response = await apiClient.delete(`/companies/${companyId}`);
+      const response = await apiClient.delete('/companies', {
+        data: { id: companyId }
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error;

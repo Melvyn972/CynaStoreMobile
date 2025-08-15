@@ -36,6 +36,12 @@ apiClient.interceptors.request.use(
       
       // Log request for debugging
       console.log(`Making request to: ${config.baseURL}${config.url}`);
+      console.log('Full request config:', {
+        baseURL: config.baseURL,
+        url: config.url,
+        method: config.method,
+        fullURL: `${config.baseURL}${config.url}`
+      });
     } catch (error) {
       console.log('Error getting token:', error);
     }
