@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getStoredToken, getStoredUser } from '../utils/auth';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
+import { IS_DEMO } from '../config/demo';
+import { ensureDemoSession } from '../demo/store';
 
 const AuthContext = createContext({
   isAuthenticated: false,
@@ -36,6 +38,9 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
+      if (IS_DEMO) {
+        await ensureDemoSession();
+      }
       const token = await getStoredToken();
       const userData = await getStoredUser();
       

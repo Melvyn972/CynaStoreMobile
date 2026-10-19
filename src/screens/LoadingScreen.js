@@ -5,7 +5,7 @@ const LoadingScreen = () => {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={styles.text}>Loading...</Text>
+      <Text style={styles.text}>Chargement...</Text>
     </View>
   );
 };

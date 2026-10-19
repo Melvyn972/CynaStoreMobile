@@ -1,17 +1,27 @@
 import axios from 'axios';
 import { API_CONFIG } from './constants';
+import { IS_DEMO } from './demo';
+import { demoAdapter } from '../demo/adapter';
+import { installDemoNetworkGuard } from '../demo/networkGuard';
 
 export const API_BASE_URL = API_CONFIG.BASE_URL;
+
+if (IS_DEMO) {
+  installDemoNetworkGuard();
+  console.info('[CynaStore] Mode démo : API locale, aucun appel de production.');
+}
 
 // Create axios instance with better mobile configuration
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
   headers: API_CONFIG.DEFAULT_HEADERS,
+  ...(IS_DEMO ? { adapter: demoAdapter } : {}),
 });
 
 // Network connectivity check
 export const checkNetworkConnectivity = async () => {
+  if (IS_DEMO) return true;
   try {
     const response = await fetch(`${API_BASE_URL}/articles`, {
       method: 'GET',
@@ -27,6 +37,10 @@ export const checkNetworkConnectivity = async () => {
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   async (config) => {
+    if (IS_DEMO) {
+      config.baseURL = 'https://demo.invalid/api';
+      config.adapter = demoAdapter;
+    }
     try {
       const { getStoredToken } = await import('../utils/auth');
       const token = await getStoredToken();
@@ -95,6 +109,7 @@ apiClient.interceptors.response.use(
 
 // Helper function to test API connectivity
 export const testAPIConnection = async () => {
+  if (IS_DEMO) return true;
   try {
     console.log('Testing API connection to:', API_BASE_URL);
     const response = await apiClient.get('/articles', { timeout: 10000 });
