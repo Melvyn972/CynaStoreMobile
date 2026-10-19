@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import { IS_DEMO } from '../config/demo';
 
 
 const userIconSvg = `
@@ -42,6 +43,10 @@ const LoginScreen = ({ navigation }) => {
       // Appel à l'API pour envoyer le lien magique
       await login.sendMagicLink(email);
       console.log('Sending magic link to:', email);
+      if (IS_DEMO) {
+        await login.verifyMagicLink('demo');
+        return;
+      }
       // Naviguer vers l'écran de vérification d'email
       navigation.navigate('CheckEmailScreen', { email });
     } catch (error) {
@@ -65,7 +70,11 @@ const LoginScreen = ({ navigation }) => {
                 <SvgXml xml={userIconSvg} width="28" height="28" />
               </View>
               <Text style={styles.title}>Connexion</Text>
-              <Text style={styles.subtitle}>Accédez à votre compte pour continuer</Text>
+              <Text style={styles.subtitle}>
+                {IS_DEMO
+                  ? 'Mode démo : connexion simulée, aucun e-mail n’est envoyé.'
+                  : 'Accédez à votre compte pour continuer'}
+              </Text>
             </View>
 
             {message && (

@@ -1,7 +1,17 @@
+// Inline the public env check so a demo bundle can drop the production host.
+const DEMO_BUILD =
+  process.env.EXPO_PUBLIC_DEMO === '1' ||
+  process.env.EXPO_PUBLIC_DEMO === 'true';
+
+const PRODUCTION_API_URL = 'https://cyna-store-web.vercel.app/api';
+
 // API Configuration
 export const API_CONFIG = {
-  // Base URL for the backend API - uses production server by default
-  BASE_URL: process.env.API_URL || (__DEV__ ? 'https://cyna-store-web.vercel.app/api' : 'https://cyna-store-web.vercel.app/api'),
+  // Base URL for the backend API - uses production server by default.
+  // Demo builds point at an unroutable host; the in-app adapter never calls it.
+  BASE_URL: DEMO_BUILD
+    ? 'https://demo.invalid/api'
+    : (process.env.API_URL || PRODUCTION_API_URL),
   
   // Timeout for API requests (in milliseconds) - increased for mobile
   TIMEOUT: 15000,

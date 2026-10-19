@@ -215,6 +215,32 @@ npx expo install --fix
 - Métriques de performance
 - Rapports d'utilisation
 
+## 🌐 Démo web publique
+
+Le mode démo sert de vitrine portfolio. Il ne contacte pas l’API de production ni Stripe. Toutes les lectures et écritures restent en mémoire, puis dans `localStorage` (clé `cyna_demo_state_v1`) sur le web.
+
+Activer le drapeau au moment du build :
+
+```bash
+EXPO_PUBLIC_DEMO=1 npx expo export --platform web
+```
+
+Sans ce drapeau, l’application continue d’utiliser l’API configurée par `API_URL` (production par défaut). Le fichier `vercel.json` fixe déjà la commande de build et le dossier de sortie.
+
+### Projet Vercel `cynastore-mobile-demo`
+
+| Réglage | Valeur |
+| --- | --- |
+| Nom du projet | `cynastore-mobile-demo` |
+| Framework | Other |
+| Racine | `.` |
+| Commande d’installation | `npm install` |
+| Commande de build | `EXPO_NO_TELEMETRY=1 EXPO_PUBLIC_DEMO=1 npx expo export --platform web` |
+| Dossier de sortie | `dist` |
+| Variable d’environnement | `EXPO_PUBLIC_DEMO` = `1` |
+
+La variable est aussi injectée par la commande de build, donc le site statique reste en démo même si le tableau de bord Vercel n’a pas encore la variable. La définir quand même évite qu’une commande de build modifiée retombe sur la production.
+
 ## 🤝 Contribution
 
 1. **Forker** le projet

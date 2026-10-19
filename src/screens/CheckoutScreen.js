@@ -128,6 +128,15 @@ const CheckoutScreen = ({ navigation, route }) => {
         checkoutResponse = await paymentService.createCartCheckout(cartItems, checkoutOptions);
       }
 
+      if (checkoutResponse.simulated) {
+        Alert.alert(
+          'Commande simulée',
+          'Aucun paiement n\'a été envoyé. Stripe n\'est pas contacté dans cette démo. La commande apparaît dans votre historique.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+
       if (checkoutResponse.url) {
         // Open Stripe checkout in browser
         const supported = await Linking.canOpenURL(checkoutResponse.url);
