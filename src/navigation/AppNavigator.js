@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import LoadingScreen from '../screens/LoadingScreen';
 import AuthModal from '../components/AuthModal';
 import useDeepLinking from '../utils/useDeepLinking';
+import { IS_DEMO } from '../config/demo';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -227,7 +228,9 @@ const AppNavigator = () => {
   
   return (
     <>
-      <NavigationContainer>
+      <NavigationContainer
+        documentTitle={IS_DEMO ? { formatter: () => 'CynaStore — Démo' } : undefined}
+      >
         {isAuthenticated ? <MainTabs /> : <AuthStack />}
       </NavigationContainer>
       

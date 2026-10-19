@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { paymentService, cartService, companyService } from '../services';
 import { useAuth } from '../context/AuthContext';
+import { IS_DEMO } from '../config/demo';
 
 const CheckoutScreen = ({ navigation, route }) => {
   const { theme, mode } = useTheme();
@@ -24,6 +25,7 @@ const CheckoutScreen = ({ navigation, route }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [company, setCompany] = useState(null);
   const [loadingCompany, setLoadingCompany] = useState(false);
+  const [simulatedOrder, setSimulatedOrder] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -129,11 +131,7 @@ const CheckoutScreen = ({ navigation, route }) => {
       }
 
       if (checkoutResponse.simulated) {
-        Alert.alert(
-          'Commande simulée',
-          'Aucun paiement n\'a été envoyé. Stripe n\'est pas contacté dans cette démo. La commande apparaît dans votre historique.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        setSimulatedOrder(checkoutResponse);
         return;
       }
 
@@ -405,6 +403,44 @@ const CheckoutScreen = ({ navigation, route }) => {
     );
   }
 
+  if (simulatedOrder) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.baseContent} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Commande simulée</Text>
+        </View>
+        <View style={[styles.loadingContainer, { paddingHorizontal: 24 }]}>
+          <Ionicons name="checkmark-circle" size={64} color={theme.success} />
+          <Text style={{ fontSize: 24, fontWeight: '700', color: theme.baseContent, textAlign: 'center', marginTop: 16 }}>
+            Aucun paiement envoyé
+          </Text>
+          <Text style={{ fontSize: 16, color: theme.neutralContent, textAlign: 'center', lineHeight: 22, marginTop: 12, maxWidth: 320 }}>
+            {`Stripe n'a pas été contacté. La commande${
+              simulatedOrder.amount ? ` de ${Number(simulatedOrder.amount).toFixed(2)} €` : ''
+            } est enregistrée dans votre historique, sur cet appareil uniquement.`}
+          </Text>
+          <TouchableOpacity
+            style={[styles.checkoutButton, { marginTop: 24, paddingHorizontal: 20 }]}
+            onPress={() =>
+              navigation.getParent()?.navigate('Profile', {
+                screen: 'Orders',
+                initial: false,
+              })
+            }
+          >
+            <Text style={styles.checkoutButtonText}>Voir mes commandes</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   if (!isAuthenticated || cartItems.length === 0) {
     return (
       <View style={styles.container}>
@@ -484,7 +520,9 @@ const CheckoutScreen = ({ navigation, route }) => {
           <View style={styles.paymentInfo}>
             <Ionicons name="shield-checkmark" size={20} color={theme.info} />
             <Text style={styles.paymentInfoText}>
-              Paiement sécurisé par Stripe. Vos informations de paiement sont protégées et chiffrées.
+              {IS_DEMO
+                ? "Démo : le paiement est simulé sur cet appareil. Aucune carte n'est demandée et Stripe n'est pas contacté."
+                : 'Paiement sécurisé par Stripe. Vos informations de paiement sont protégées et chiffrées.'}
             </Text>
           </View>
 
@@ -526,7 +564,7 @@ const CheckoutScreen = ({ navigation, route }) => {
           ) : (
             <>
               <Text style={styles.checkoutButtonText}>
-                Payer {calculateTotal()} €
+                {IS_DEMO ? 'Simuler le paiement' : `Payer ${calculateTotal()} €`}
               </Text>
               <Ionicons name="card-outline" size={20} color={theme.primaryContent} />
             </>
